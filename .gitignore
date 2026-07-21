@@ -1,0 +1,9 @@
+node_modules
+dist
+*.tsbuildinfo
+.DS_Store
+.claude/
+
+# dev server runtime files
+.dev-server.pid
+.dev-server.log
