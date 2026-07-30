@@ -460,6 +460,34 @@ describe('calculateMortgage — savings pool (currentRent + monthlySavings)', ()
     }
   });
 
+  it("'auto' mode stops the monthly drip once past the fixed term when bankedSavingsDestination is 'lumpSumEachCycle' (no ERC risk, periodic payout handles it instead)", () => {
+    // Contrast with the 'keepAsSavings' case above: once ERC risk is gone AND a
+    // periodic lump-sum payout is already going to sweep the banked pot onto the
+    // mortgage, pacing a parallel monthly drip serves no purpose — it only
+    // recategorizes money from "lump sum" to "recurring overpayment" in the
+    // schedule, one month earlier than the payout would anyway. It should bank
+    // entirely and show up as a lump sum instead.
+    const result = calculateMortgage(
+      baseInputs({
+        fixedTermMonths: 24,
+        currentRent: 3000,
+        monthlySavings: 0,
+        monthlyOverpaymentAmountMode: 'auto',
+        targetAllowanceUtilizationPct: 50,
+        bankedSavingsDestination: 'lumpSumEachCycle',
+        savingsPayoutIntervalYears: 1,
+      }),
+    );
+    const recurring = (i: number) => result.schedule[i].overpaymentPaid - result.schedule[i].lumpSumPaid;
+    // Months 25-36 (index 24-35): one full allowance year, entirely past the
+    // fixed term. No recurring drip at all — everything banks toward the payout.
+    for (let i = 24; i <= 35; i++) {
+      expect(recurring(i)).toBeCloseTo(0, 1);
+    }
+    // The payout itself still lands and clears real money onto the mortgage.
+    expect(result.schedule.some((e) => e.lumpSumPaid > 0)).toBe(true);
+  });
+
   it('effective savings grows as the payment falls under reducePayment mode', () => {
     const result = calculateMortgage(
       baseInputs({

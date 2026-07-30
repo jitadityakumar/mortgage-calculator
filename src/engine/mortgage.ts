@@ -192,10 +192,21 @@ export function calculateMortgage(inputs: MortgageInputs): MortgageResult {
     // payment falls over time (reducePayment mode, or a lower rate at a transition).
     const effectiveSavingsPence = Math.max(0, monthlyBudgetPoolPence - payment);
 
+    // 'auto' mode's monthly pacing exists to spread overpayments so they stay
+    // under the penalty-free allowance. When there's no ERC risk this month AND
+    // the banked pot is already destined to be swept onto the mortgage as a
+    // periodic lump sum (bankedDestination === 'lumpSumEachCycle'), the pacing
+    // serves no purpose — the money reaches the mortgage either way, just later
+    // and in one go — so skip the drip-feed and let it fully bank instead. When
+    // there's no periodic payout mechanism (bankedDestination === 'keepAsSavings'),
+    // keep pacing indefinitely: it's the only thing that ever gets money onto the
+    // mortgage once the allowance itself no longer constrains anything.
+    const autoPacingActive = allowanceApplies || bankedDestination !== 'lumpSumEachCycle';
+
     let recurringOverpaymentPence = 0;
     if (overpaymentAmountMode === 'fixed') {
       recurringOverpaymentPence = fixedMonthlyOverpaymentPence;
-    } else if (overpaymentAmountMode === 'auto') {
+    } else if (overpaymentAmountMode === 'auto' && autoPacingActive) {
       // Spread the target evenly across the remaining months of the current
       // allowance year, rather than greedily maxing out savings each month
       // until the target is hit and then doing nothing for the rest of the

@@ -4,6 +4,7 @@ import { AdvancedConfig } from './components/AdvancedConfig';
 import { AmortizationTable } from './components/AmortizationTable';
 import { BalanceChart } from './components/BalanceChart';
 import { CoreInputsForm } from './components/CoreInputsForm';
+import { DebugState } from './components/DebugState';
 import { OverpaymentsForm } from './components/OverpaymentsForm';
 import { ResultsSummary } from './components/ResultsSummary';
 import { SdltCalculator } from './components/SdltCalculator';
@@ -68,6 +69,7 @@ function App() {
             isFirstTimeBuyer={form.isFirstTimeBuyer}
             onIsFirstTimeBuyerChange={(v) => update('isFirstTimeBuyer', v)}
           />
+          <DebugState form={form} onImport={setForm} />
         </div>
 
         <div className="results-column">
