@@ -1,4 +1,10 @@
-import type { ComparisonResult, MortgageInputs, MortgageResult } from './types';
+import type {
+  ComparisonResult,
+  MortgageInputs,
+  MortgageResult,
+  SavedCalculationDetail,
+  SavedCalculationSummary,
+} from './types';
 
 const API_BASE = '/api/v1';
 
@@ -49,4 +55,42 @@ export function compareWithAndWithoutOverpayments(
   signal?: AbortSignal,
 ): Promise<ComparisonResult> {
   return postJson<ComparisonResult>('/compare', inputs, signal);
+}
+
+async function getJson<T>(path: string): Promise<T> {
+  const response = await fetch(`${API_BASE}${path}`);
+  if (!response.ok) {
+    throw new Error(`Request to ${path} failed with status ${response.status}`);
+  }
+  return response.json() as Promise<T>;
+}
+
+export function listSavedCalculations(): Promise<SavedCalculationSummary[]> {
+  return getJson<SavedCalculationSummary[]>('/saved-calculations');
+}
+
+export function getSavedCalculation(id: number): Promise<SavedCalculationDetail> {
+  return getJson<SavedCalculationDetail>(`/saved-calculations/${id}`);
+}
+
+export async function saveCalculation(name: string, inputs: MortgageInputs): Promise<SavedCalculationSummary> {
+  const response = await fetch(`${API_BASE}/saved-calculations`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, inputs }),
+  });
+  if (!response.ok) {
+    throw new Error(`Saving the calculation failed with status ${response.status}`);
+  }
+  return response.json() as Promise<SavedCalculationSummary>;
+}
+
+export async function deleteSavedCalculation(id: number): Promise<void> {
+  const response = await fetch(`${API_BASE}/saved-calculations/${id}`, { method: 'DELETE' });
+  // DELETE is idempotent — a 404 means the end state the caller wanted
+  // (this id no longer exists) is already true, e.g. a double-click firing
+  // two deletes in a row. Only a genuine failure should reject.
+  if (!response.ok && response.status !== 404) {
+    throw new Error(`Deleting the saved calculation failed with status ${response.status}`);
+  }
 }

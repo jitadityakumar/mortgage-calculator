@@ -1,6 +1,13 @@
-import { vi } from 'vitest';
+import { beforeEach, vi } from 'vitest';
 import { computeHasOverpayments } from '../hasOverpayments';
-import type { ComparisonResult, MonthlyScheduleEntry, MortgageInputs, MortgageResult } from '../api/types';
+import type {
+  ComparisonResult,
+  MonthlyScheduleEntry,
+  MortgageInputs,
+  MortgageResult,
+  SavedCalculationDetail,
+  SavedCalculationSummary,
+} from '../api/types';
 
 /**
  * Test-only stand-in for the FastAPI backend. App.test.tsx exercises UI
@@ -88,19 +95,83 @@ function validationIssues(inputs: MortgageInputs): string[] {
   return issues;
 }
 
+function jsonResponse(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
+}
+
+// In-memory stand-in for the saved_calculations table. Reset before every
+// test (see beforeEach below) so saves in one test can't leak into another.
+let savedCalculations: SavedCalculationDetail[] = [];
+let nextSavedId = 1;
+
+beforeEach(() => {
+  savedCalculations = [];
+  nextSavedId = 1;
+});
+
 export function installMockApi() {
   vi.stubGlobal(
     'fetch',
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = typeof input === 'string' ? input : input.toString();
+      const method = init?.method ?? 'GET';
+      const savedMatch = url.match(/\/api\/v1\/saved-calculations(?:\/(\d+))?$/);
+
+      if (savedMatch) {
+        const id = savedMatch[1] ? Number(savedMatch[1]) : null;
+
+        if (method === 'GET' && id === null) {
+          const summaries: SavedCalculationSummary[] = savedCalculations.map((c) => ({
+            id: c.id,
+            name: c.name,
+            createdAt: c.createdAt,
+            propertyValue: c.inputs.propertyValue,
+            deposit: c.inputs.deposit,
+            totalTermMonths: c.inputs.totalTermMonths,
+          }));
+          return jsonResponse(summaries);
+        }
+
+        if (method === 'GET' && id !== null) {
+          const found = savedCalculations.find((c) => c.id === id);
+          return found ? jsonResponse(found) : jsonResponse({ detail: 'Not found.' }, 404);
+        }
+
+        if (method === 'POST') {
+          const { name, inputs } = JSON.parse((init?.body as string) ?? '{}') as {
+            name: string;
+            inputs: MortgageInputs;
+          };
+          const record: SavedCalculationDetail = {
+            id: nextSavedId++,
+            name,
+            createdAt: new Date().toISOString(),
+            inputs,
+          };
+          savedCalculations.unshift(record);
+          const summary: SavedCalculationSummary = {
+            id: record.id,
+            name: record.name,
+            createdAt: record.createdAt,
+            propertyValue: record.inputs.propertyValue,
+            deposit: record.inputs.deposit,
+            totalTermMonths: record.inputs.totalTermMonths,
+          };
+          return jsonResponse(summary, 201);
+        }
+
+        if (method === 'DELETE' && id !== null) {
+          const existed = savedCalculations.some((c) => c.id === id);
+          savedCalculations = savedCalculations.filter((c) => c.id !== id);
+          return existed ? new Response(null, { status: 204 }) : jsonResponse({ detail: 'Not found.' }, 404);
+        }
+      }
+
       const inputs = JSON.parse((init?.body as string) ?? '{}') as MortgageInputs;
       const issues = validationIssues(inputs);
 
       if (issues.length > 0) {
-        return new Response(JSON.stringify({ detail: 'Invalid mortgage inputs', issues }), {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' },
-        });
+        return jsonResponse({ detail: 'Invalid mortgage inputs', issues }, 400);
       }
 
       if (url.endsWith('/api/v1/compare')) {
@@ -112,15 +183,14 @@ export function installMockApi() {
           interestSaved: withoutOverpayments.totalInterestPaid - withOverpayments.totalInterestPaid,
           monthsSaved: withoutOverpayments.payoffMonth - withOverpayments.payoffMonth,
         };
-        return new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } });
+        return jsonResponse(body);
       }
 
       if (url.endsWith('/api/v1/calculate')) {
-        const body = buildResult(inputs, true);
-        return new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } });
+        return jsonResponse(buildResult(inputs, true));
       }
 
-      throw new Error(`Unmocked fetch call: ${url}`);
+      throw new Error(`Unmocked fetch call: ${method} ${url}`);
     }),
   );
 }

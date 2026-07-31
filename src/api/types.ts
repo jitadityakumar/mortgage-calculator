@@ -91,3 +91,19 @@ export interface ComparisonResult {
   interestSaved: number;
   monthsSaved: number;
 }
+
+export interface SavedCalculationSummary {
+  id: number;
+  name: string;
+  createdAt: string;
+  propertyValue: number;
+  deposit: number;
+  totalTermMonths: number;
+}
+
+export interface SavedCalculationDetail {
+  id: number;
+  name: string;
+  createdAt: string;
+  inputs: MortgageInputs;
+}
