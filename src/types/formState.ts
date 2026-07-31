@@ -3,14 +3,14 @@ import {
   DEFAULT_REMORTGAGE_GAP_MONTHS,
   DEFAULT_SAVINGS_PAYOUT_INTERVAL_YEARS,
   DEFAULT_VARIABLE_RATE_PLACEHOLDER_PCT,
-} from '../engine';
+} from '../api/defaults';
 import type {
   AllowanceBasis,
   BankedSavingsDestination,
   MonthlyOverpaymentAmountMode,
   OverpaymentMode,
   RateAfterFixedTermMode,
-} from '../engine';
+} from '../api/types';
 
 export interface LumpSumFormRow {
   id: string;

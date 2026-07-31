@@ -1,5 +1,5 @@
 import { useId, useRef, useState } from 'react';
-import type { MonthlyScheduleEntry } from '../engine';
+import type { MonthlyScheduleEntry } from '../api/types';
 import { formatGBP, formatMonthsAsYearsMonths } from '../format';
 
 interface BalanceChartProps {

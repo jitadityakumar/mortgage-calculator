@@ -1,4 +1,4 @@
-import type { ComparisonResult } from '../engine';
+import type { ComparisonResult } from '../api/types';
 import { formatGBP, formatMonthsAsYearsMonths } from '../format';
 
 interface ResultsSummaryProps {
