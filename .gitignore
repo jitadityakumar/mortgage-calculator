@@ -8,6 +8,7 @@ backend/**/__pycache__
 .pytest_cache
 scripts/crosscheck/ts_output.json
 .env.deploy
+backend/*.db
 
 # dev server runtime files
 .dev-server.pid

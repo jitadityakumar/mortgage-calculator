@@ -193,4 +193,69 @@ describe('App', () => {
     await user.click(screen.getByText(/Full amortization schedule/));
     expect(await screen.findByText('Rows shaded and marked ↷ are the last month of a fixed-rate deal.')).toBeInTheDocument();
   });
+
+  it('saves a calculation and it appears in the saved list', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByText(/You'd save/);
+
+    expect(screen.getByText('None saved yet.')).toBeInTheDocument();
+
+    await user.type(getInputForLabel('Name'), 'My base case');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText(/My base case/)).toBeInTheDocument();
+    expect(screen.queryByText('None saved yet.')).not.toBeInTheDocument();
+  });
+
+  it('loading a saved calculation populates the form', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByText(/You'd save/);
+
+    const depositInput = getInputForLabel('Deposit');
+    await user.clear(depositInput);
+    await user.type(depositInput, '120000');
+    await user.type(getInputForLabel('Name'), 'Higher deposit');
+    // Save is disabled while the debounced recalculation for the new
+    // deposit is still in flight — wait for it to settle before saving, or
+    // the click would be a no-op.
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).not.toBeDisabled());
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await screen.findByText(/Higher deposit/);
+
+    await user.clear(depositInput);
+    await user.type(depositInput, '10000');
+    await waitFor(() => expect(depositInput.value).toBe('10000'));
+
+    await user.click(screen.getByText(/Higher deposit/));
+    await waitFor(() => expect(depositInput.value).toBe('120000'));
+  });
+
+  it('deleting a saved calculation removes it from the list', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByText(/You'd save/);
+
+    await user.type(getInputForLabel('Name'), 'To be deleted');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await screen.findByText(/To be deleted/);
+
+    await user.click(screen.getByRole('button', { name: 'Delete To be deleted' }));
+    await waitFor(() => expect(screen.queryByText(/To be deleted/)).not.toBeInTheDocument());
+    expect(screen.getByText('None saved yet.')).toBeInTheDocument();
+  });
+
+  it('disables saving while validation issues are present', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByText(/You'd save/);
+
+    const depositInput = getInputForLabel('Deposit');
+    await user.clear(depositInput);
+    await user.type(depositInput, '999999');
+    await screen.findByText('Check your inputs');
+
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+  });
 });

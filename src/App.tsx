@@ -7,12 +7,14 @@ import { CoreInputsForm } from './components/CoreInputsForm';
 import { DebugState } from './components/DebugState';
 import { OverpaymentsForm } from './components/OverpaymentsForm';
 import { ResultsSummary } from './components/ResultsSummary';
+import { SaveCalculation } from './components/SaveCalculation';
+import { SavedCalculationsList } from './components/SavedCalculationsList';
 import { SdltCalculator } from './components/SdltCalculator';
 import { ValidationErrors } from './components/ValidationErrors';
-import { ApiValidationError, compareWithAndWithoutOverpayments } from './api/client';
-import type { ComparisonResult } from './api/types';
+import { ApiValidationError, compareWithAndWithoutOverpayments, getSavedCalculation } from './api/client';
+import type { ComparisonResult, MortgageInputs } from './api/types';
 import { computeHasOverpayments } from './hasOverpayments';
-import { mapFormStateToInputs } from './mapFormState';
+import { mapFormStateToInputs, mapInputsToFormState } from './mapFormState';
 import { DEFAULT_FORM_STATE, type FormState } from './types/formState';
 
 // Recalculation is now a network round-trip (the FE no longer calculates
@@ -28,6 +30,10 @@ const DEBOUNCE_MS = 300;
 interface ComparisonState {
   comparison: ComparisonResult;
   hasOverpayments: boolean;
+  /** The exact inputs that produced `comparison` — SaveCalculation must save
+   * these, not the form's live `inputs`, which may have already moved on to
+   * a value the backend hasn't validated/computed for yet. */
+  inputs: MortgageInputs;
 }
 
 function App() {
@@ -36,9 +42,22 @@ function App() {
   const [issues, setIssues] = useState<string[]>([]);
   const [networkError, setNetworkError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [savedRefreshToken, setSavedRefreshToken] = useState(0);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const update = <K extends keyof FormState>(field: K, value: FormState[K]) => {
     setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleLoadSaved = async (id: number) => {
+    setLoadError(null);
+    try {
+      const detail = await getSavedCalculation(id);
+      setForm((prev) => mapInputsToFormState(detail.inputs, prev));
+    } catch (err) {
+      console.error('Failed to load saved calculation:', err);
+      setLoadError('Could not load that saved calculation.');
+    }
   };
 
   const inputs = useMemo(() => mapFormStateToInputs(form), [form]);
@@ -51,7 +70,7 @@ function App() {
       compareWithAndWithoutOverpayments(inputs, controller.signal)
         .then((comparison) => {
           if (controller.signal.aborted) return;
-          setResult({ comparison, hasOverpayments: computeHasOverpayments(inputs) });
+          setResult({ comparison, hasOverpayments: computeHasOverpayments(inputs), inputs });
           setIssues([]);
           setNetworkError(null);
         })
@@ -90,8 +109,7 @@ function App() {
       <header>
         <h1>Mortgage calculator</h1>
         <p className="subtitle">
-          For a mortgage in England. Nothing you enter here is saved — figures are estimates, not
-          financial advice.
+          For a mortgage in England. Figures are estimates, not financial advice.
         </p>
       </header>
 
@@ -110,18 +128,25 @@ function App() {
             isFirstTimeBuyer={form.isFirstTimeBuyer}
             onIsFirstTimeBuyerChange={(v) => update('isFirstTimeBuyer', v)}
           />
+          <SavedCalculationsList refreshToken={savedRefreshToken} onLoad={handleLoadSaved} />
           <DebugState form={form} onImport={setForm} />
         </div>
 
         <div className="results-column">
           <ValidationErrors issues={issues} />
-          {networkError && (
+          {(loadError || networkError) && (
             <div className="card errors" role="alert">
               <h2>Something went wrong</h2>
-              <p>{networkError}</p>
+              {loadError && <p>{loadError}</p>}
+              {networkError && <p>{networkError}</p>}
             </div>
           )}
           {isLoading && <p className="field-hint" aria-live="polite">Calculating…</p>}
+          <SaveCalculation
+            inputs={result?.inputs ?? inputs}
+            canSave={result !== null && !isLoading}
+            onSaved={() => setSavedRefreshToken((t) => t + 1)}
+          />
           {comparison && (
             <>
               <ResultsSummary comparison={comparison} hasOverpayments={hasOverpayments} />
