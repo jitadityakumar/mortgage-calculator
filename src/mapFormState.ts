@@ -1,4 +1,4 @@
-import type { MortgageInputs } from './engine';
+import type { MortgageInputs } from './api/types';
 import { parseNum } from './format';
 import type { FormState } from './types/formState';
 

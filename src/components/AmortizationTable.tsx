@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { MonthlyScheduleEntry } from '../engine';
+import type { MonthlyScheduleEntry } from '../api/types';
 import { formatGBP, formatMonthCompact } from '../format';
 
 interface AmortizationTableProps {

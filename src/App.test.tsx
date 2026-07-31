@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import App from './App';
@@ -49,14 +49,14 @@ describe('App', () => {
     expect(await screen.findByText(/You'd save/)).toBeInTheDocument();
 
     await turnOffAllOverpayments(user);
-    expect(screen.queryByText(/You'd save/)).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText(/You'd save/)).not.toBeInTheDocument());
   });
 
   it('a fixed monthly overpayment alone triggers the comparison', async () => {
     const user = userEvent.setup();
     render(<App />);
     await turnOffAllOverpayments(user);
-    expect(screen.queryByText(/You'd save/)).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText(/You'd save/)).not.toBeInTheDocument());
 
     await user.click(screen.getByText('Fixed amount'));
     const fixedInput = getInputForLabel('Fixed monthly overpayment');
@@ -93,7 +93,7 @@ describe('App', () => {
     const user = userEvent.setup();
     render(<App />);
     await turnOffAllOverpayments(user);
-    expect(screen.queryByText(/You'd save/)).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText(/You'd save/)).not.toBeInTheDocument());
 
     await user.click(screen.getByText('+ Add lump sum'));
     const monthInput = getInputForLabel('Month #');
@@ -105,7 +105,7 @@ describe('App', () => {
 
     await user.click(screen.getByRole('button', { name: 'Remove lump sum' }));
     expect(screen.queryByLabelText('Month #')).not.toBeInTheDocument();
-    expect(screen.queryByText(/You'd save/)).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText(/You'd save/)).not.toBeInTheDocument());
   });
 
   it('shows the balance chart comparison line even when reducePayment mode keeps the schedule length unchanged', async () => {
