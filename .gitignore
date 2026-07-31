@@ -3,6 +3,10 @@ dist
 *.tsbuildinfo
 .DS_Store
 .claude/
+backend/.venv
+backend/**/__pycache__
+.pytest_cache
+scripts/crosscheck/ts_output.json
 
 # dev server runtime files
 .dev-server.pid
