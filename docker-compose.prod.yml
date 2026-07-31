@@ -1,7 +1,6 @@
 services:
   backend:
-    build:
-      context: ./backend
+    image: mortgage-calculator-backend:latest
     ports:
       - "8000:8000"
     volumes:
@@ -14,17 +13,25 @@ services:
       timeout: 3s
       retries: 5
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "7"
 
   frontend:
-    build:
-      context: .
-      dockerfile: frontend/Dockerfile
+    image: mortgage-calculator-frontend:latest
     ports:
       - "8090:80"
     depends_on:
       backend:
         condition: service_healthy
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "7"
 
 volumes:
   db-data:
