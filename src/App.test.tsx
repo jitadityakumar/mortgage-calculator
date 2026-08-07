@@ -2,6 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import App from './App';
+import { setDefaultsShouldFail } from './test/mockApi';
 
 /** Renders the app and waits for the pre-fetched defaults (GET
  * /api/v1/defaults) to resolve and the form to mount, so subsequent
@@ -28,6 +29,26 @@ async function turnOffAllOverpayments(user: ReturnType<typeof userEvent.setup>) 
 }
 
 describe('App', () => {
+  it('shows a loading state while defaults are being fetched, then renders the form', async () => {
+    render(<App />);
+    expect(screen.getByText('Loading…')).toBeInTheDocument();
+    expect(screen.queryByText('Deposit')).not.toBeInTheDocument();
+
+    await screen.findByText('Deposit');
+    expect(screen.queryByText('Loading…')).not.toBeInTheDocument();
+  });
+
+  it('shows an error instead of the form when fetching defaults fails', async () => {
+    setDefaultsShouldFail(true);
+    render(<App />);
+
+    expect(await screen.findByText('Something went wrong')).toBeInTheDocument();
+    expect(
+      screen.getByText('Could not reach the calculation service. Please refresh to try again.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Deposit')).not.toBeInTheDocument();
+  });
+
   it('renders default results for the pre-filled inputs', async () => {
     await renderApp();
     expect(await screen.findByText('Monthly payment (fixed period)')).toBeInTheDocument();

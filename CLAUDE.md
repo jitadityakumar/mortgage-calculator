@@ -43,9 +43,12 @@ Frontend (React/Vite, src/)          Backend (FastAPI, backend/app/)
   - `types.py` — all shared Pydantic models. Read the doc comments on the TS mirror
     (`src/api/types.ts`) for *why* each mode enum exists and how modes interact —
     that context lives in the hand-written comments, not the code alone.
-  - `config.py` — illustrative defaults (`DEFAULT_CONFIG`) for lender mechanics that
-    vary in the real world (overpayment allowance %, ERC rate, arrangement fee, etc.).
-    Estimates, not real lender terms — keep them clearly labeled as such in UI copy.
+  - `config.py` — loads `defaults.json` (the single source of truth for every default
+    value: `MortgageConfig` fields like overpayment allowance %/ERC rate/arrangement
+    fee, plus rate/term/deposit/overpayment-mode defaults) into `DEFAULT_CONFIG` and
+    related constants. Estimates, not real lender terms — keep them clearly labeled as
+    such in UI copy. Also served as-is to the frontend via `GET /api/v1/defaults`, so
+    the FE never hand-duplicates a second copy (see `src/api/` below).
   - `money.py` — integer-pence arithmetic, via `js_round()` (replicates JS's
     `Math.round` exactly — NOT Python's banker's-rounding `round()`, which would
     silently diverge). **Never use raw floats for money math** in this codebase; all
@@ -62,13 +65,14 @@ Frontend (React/Vite, src/)          Backend (FastAPI, backend/app/)
   be part of the "two engines can drift" risk the migration addressed (a static tax
   band lookup, not stateful simulation). Don't add other calculation logic here; this
   is a deliberate, narrow exception, not a precedent.
-- **`src/api/`** — `client.ts` (fetch wrapper for every backend endpoint),
-  `types.ts` (hand-mirrors `backend/app/engine/types.py` field-for-field — kept in
-  sync by hand; see migration.md "Open follow-ups" for auto-generating this later),
-  `defaults.ts` (form-prefill constants mirroring `backend/app/engine/config.py` —
-  also hand-synced, and unlike the deleted client engine this IS a live
-  "two sources of truth" risk since `mapFormStateToInputs` always sends these as
-  explicit values; see the doc comment on `defaults.ts`).
+- **`src/api/`** — `client.ts` (fetch wrapper for every backend endpoint, including
+  `fetchDefaults()`), `types.ts` (hand-mirrors `backend/app/engine/types.py`
+  field-for-field — kept in sync by hand; see migration.md "Open follow-ups" for
+  auto-generating this later, and includes `MortgageDefaults`, the wire type for
+  `GET /api/v1/defaults`). Form pre-fill no longer hardcodes a second copy of the
+  backend's defaults — `App.tsx` fetches `GET /api/v1/defaults` on mount (backed by
+  `backend/app/engine/defaults.json`, the single source of truth) and builds the
+  initial form via `buildDefaultFormState()` (`src/types/formState.ts`).
 - **`src/`** (UI) — `App.tsx` wires a form column to a results column, `async`: it
   debounces (300ms) and calls the backend on every input change, with loading and
   error states. Form state (`src/types/formState.ts`) is all strings, so
@@ -141,7 +145,8 @@ Frontend (React/Vite, src/)          Backend (FastAPI, backend/app/)
   `python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt`.
 - For any change to `backend/app/engine/`, prefer adding a regression test that would
   fail without the fix, not just fixing the symptom — and mirror the change in
-  `src/api/types.ts`/`src/api/defaults.ts` if it touches the wire format or defaults.
+  `src/api/types.ts` if it touches the wire format. Default values themselves only
+  need updating in one place now: `backend/app/engine/defaults.json`.
 - This project has previously used a **dual-review pass** for correctness-critical
   engine changes: one pass focused on code quality/consistency, a second independent
   pass focused purely on re-deriving the math by hand and checking it against the

@@ -129,9 +129,20 @@ function jsonResponse(body: unknown, status = 200): Response {
 let savedCalculations: SavedCalculationDetail[] = [];
 let nextSavedId = 1;
 
+// Lets a test simulate GET /api/v1/defaults failing (e.g. App.tsx's
+// defaultsError branch), without needing a separate fetch mock per test.
+// Reset before every test so a failure simulated in one test can't leak
+// into the next.
+let defaultsShouldFail = false;
+
+export function setDefaultsShouldFail(shouldFail: boolean) {
+  defaultsShouldFail = shouldFail;
+}
+
 beforeEach(() => {
   savedCalculations = [];
   nextSavedId = 1;
+  defaultsShouldFail = false;
 });
 
 export function installMockApi() {
@@ -142,6 +153,9 @@ export function installMockApi() {
       const method = init?.method ?? 'GET';
 
       if (method === 'GET' && url.endsWith('/api/v1/defaults')) {
+        if (defaultsShouldFail) {
+          return jsonResponse({ detail: 'Internal Server Error' }, 500);
+        }
         return jsonResponse(MOCK_DEFAULTS);
       }
 
