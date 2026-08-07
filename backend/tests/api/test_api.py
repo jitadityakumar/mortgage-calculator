@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 
+from app.engine import DEFAULT_DEPOSIT
 from app.main import app
 
 client = TestClient(app)
@@ -72,16 +73,15 @@ def test_compare_with_only_property_value_uses_defaults() -> None:
     response = client.post("/api/v1/compare", json={"propertyValue": 250_000})
     assert response.status_code == 200
     body = response.json()
-    assert body["withOverpayments"]["principal"] == 225_000
-    assert body["withoutOverpayments"]["principal"] == 225_000
+    assert body["withOverpayments"]["principal"] == 250_000 - DEFAULT_DEPOSIT
+    assert body["withoutOverpayments"]["principal"] == 250_000 - DEFAULT_DEPOSIT
 
 
 def test_calculate_with_only_property_value_uses_defaults() -> None:
     response = client.post("/api/v1/calculate", json={"propertyValue": 250_000})
     assert response.status_code == 200
     body = response.json()
-    # 10% default deposit -> principal is 90% of propertyValue.
-    assert body["principal"] == 225_000
+    assert body["principal"] == 250_000 - DEFAULT_DEPOSIT
     assert len(body["schedule"]) == 300
 
 
@@ -91,6 +91,21 @@ def test_calculate_with_property_value_and_deposit_only_uses_defaults_for_rest()
     body = response.json()
     assert body["principal"] == 200_000
     assert len(body["schedule"]) == 300
+
+
+def test_get_defaults_returns_the_shared_default_values() -> None:
+    response = client.get("/api/v1/defaults")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["deposit"] == DEFAULT_DEPOSIT
+    assert body["fixedRateAnnualPct"] == 4.5
+    assert body["fixedTermMonths"] == 60
+    assert body["totalTermMonths"] == 300
+    assert body["variableRateAnnualPct"] == 7.25
+    assert body["overpaymentMode"] == "reduceTerm"
+    assert body["monthlyOverpaymentAmountMode"] == "auto"
+    assert body["bankedSavingsDestination"] == "lumpSumEachCycle"
+    assert body["config"]["annualOverpaymentAllowancePct"] == 10
 
 
 def test_calculate_returns_422_for_malformed_request_body() -> None:

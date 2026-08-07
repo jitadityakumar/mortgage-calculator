@@ -45,7 +45,7 @@ def calculate_mortgage(inputs: MortgageInputs) -> MortgageResult:
         raise MortgageValidationError(issues)
 
     config = resolve_config(inputs.config)
-    mode = inputs.overpaymentMode or "reduceTerm"
+    mode = inputs.overpaymentMode
     warnings: list[str] = []
 
     fee_pence = pounds_to_pence(config.arrangementFee)
@@ -60,8 +60,8 @@ def calculate_mortgage(inputs: MortgageInputs) -> MortgageResult:
         principal_pence, fixed_monthly_rate, total_term_months
     )
 
-    overpayment_amount_mode = inputs.monthlyOverpaymentAmountMode or "none"
-    banked_destination = inputs.bankedSavingsDestination or "keepAsSavings"
+    overpayment_amount_mode = inputs.monthlyOverpaymentAmountMode
+    banked_destination = inputs.bankedSavingsDestination
     savings_payout_interval_months = max(
         1,
         js_round(

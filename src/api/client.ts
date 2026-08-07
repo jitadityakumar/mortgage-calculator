@@ -1,5 +1,6 @@
 import type {
   ComparisonResult,
+  MortgageDefaults,
   MortgageInputs,
   MortgageResult,
   SavedCalculationDetail,
@@ -63,6 +64,10 @@ async function getJson<T>(path: string): Promise<T> {
     throw new Error(`Request to ${path} failed with status ${response.status}`);
   }
   return response.json() as Promise<T>;
+}
+
+export function fetchDefaults(): Promise<MortgageDefaults> {
+  return getJson<MortgageDefaults>('/defaults');
 }
 
 export function listSavedCalculations(): Promise<SavedCalculationSummary[]> {

@@ -3,6 +3,15 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import App from './App';
 
+/** Renders the app and waits for the pre-fetched defaults (GET
+ * /api/v1/defaults) to resolve and the form to mount, so subsequent
+ * synchronous screen.getByText/getByRole calls in a test don't race the
+ * initial async load. */
+async function renderApp() {
+  render(<App />);
+  await screen.findByText('Deposit');
+}
+
 function getInputForLabel(labelText: string): HTMLInputElement {
   return screen.getByText(labelText).closest('label')!.querySelector('input')!;
 }
@@ -20,7 +29,7 @@ async function turnOffAllOverpayments(user: ReturnType<typeof userEvent.setup>) 
 
 describe('App', () => {
   it('renders default results for the pre-filled inputs', async () => {
-    render(<App />);
+    await renderApp();
     expect(await screen.findByText('Monthly payment (fixed period)')).toBeInTheDocument();
     expect(screen.getAllByText('Time to pay off').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Total interest paid').length).toBeGreaterThan(0);
@@ -28,7 +37,7 @@ describe('App', () => {
 
   it('shows validation errors instead of results when the deposit exceeds the property value', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
 
     const depositInput = getInputForLabel('Deposit');
     await user.clear(depositInput);
@@ -39,13 +48,13 @@ describe('App', () => {
   });
 
   it('the default auto overpayment mode produces a comparison out of the box', async () => {
-    render(<App />);
+    await renderApp();
     expect(await screen.findByText(/You'd save/)).toBeInTheDocument();
   });
 
   it('turning off both overpayment mechanisms removes the comparison', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
     expect(await screen.findByText(/You'd save/)).toBeInTheDocument();
 
     await turnOffAllOverpayments(user);
@@ -54,7 +63,7 @@ describe('App', () => {
 
   it('a fixed monthly overpayment alone triggers the comparison', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
     await turnOffAllOverpayments(user);
     await waitFor(() => expect(screen.queryByText(/You'd save/)).not.toBeInTheDocument());
 
@@ -68,7 +77,7 @@ describe('App', () => {
 
   it('expands the Stamp Duty section and shows a tax figure', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
 
     await user.click(screen.getByText(/Stamp Duty Land Tax/));
     expect(await screen.findByText('Stamp Duty Land Tax')).toBeInTheDocument();
@@ -77,7 +86,7 @@ describe('App', () => {
 
   it('toggles the Advanced assumptions section open and closed', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
 
     expect(screen.queryByText('Penalty-free overpayment allowance')).not.toBeInTheDocument();
 
@@ -91,7 +100,7 @@ describe('App', () => {
 
   it('adding a lump sum alone triggers the overpayment comparison, and removing it clears it again', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
     await turnOffAllOverpayments(user);
     await waitFor(() => expect(screen.queryByText(/You'd save/)).not.toBeInTheDocument());
 
@@ -114,7 +123,7 @@ describe('App', () => {
     // length, very different balances throughout. The chart must key off
     // whether a comparison schedule was passed, not off length inequality.
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
     await turnOffAllOverpayments(user);
 
     await user.selectOptions(getSelectForLabel('When you overpay, it should...'), 'reducePayment');
@@ -128,7 +137,7 @@ describe('App', () => {
 
   it('shows the effective-savings hint whenever the pool is in use, hidden once both mechanisms are off', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
     expect(await screen.findByText(/leaving about/)).toBeInTheDocument();
 
     await turnOffAllOverpayments(user);
@@ -137,7 +146,7 @@ describe('App', () => {
 
   it('the target allowance % field only appears in auto mode', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
     expect(screen.getByText('Use up to this % of my penalty-free allowance')).toBeInTheDocument();
 
     await user.click(screen.getByText('Fixed amount'));
@@ -149,7 +158,7 @@ describe('App', () => {
 
   it('the remortgage gap field only appears when remortgaging into a new fixed deal', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
     expect(screen.getByText('Time to arrange the next fixed deal')).toBeInTheDocument();
 
     await user.click(screen.getByText('Move onto the variable rate and stay there'));
@@ -158,7 +167,7 @@ describe('App', () => {
 
   it('the savings payout interval field only appears when staying on the variable rate; cycling shows an automatic-payout note instead', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
     // App default is 'remortgageToNewFixed', where payout timing follows the
     // remortgage cycle automatically — the calendar interval field doesn't apply.
     expect(screen.queryByText('Pay out banked savings every')).not.toBeInTheDocument();
@@ -174,7 +183,7 @@ describe('App', () => {
 
   it('the pool-in-use hints stay visible for a lump-sum-cycle strategy even while staying on the variable rate', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
     await user.click(screen.getByText("None — don't overpay monthly (savings can still fund a lump sum below)"));
     expect(await screen.findByText(/leaving about/)).toBeInTheDocument();
 
@@ -187,7 +196,7 @@ describe('App', () => {
 
   it('highlights fixed-period-boundary rows in the amortization table', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
     await screen.findByText(/You'd save/);
 
     await user.click(screen.getByText(/Full amortization schedule/));
@@ -196,7 +205,7 @@ describe('App', () => {
 
   it('saves a calculation and it appears in the saved list', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
     await screen.findByText(/You'd save/);
 
     expect(screen.getByText('None saved yet.')).toBeInTheDocument();
@@ -210,7 +219,7 @@ describe('App', () => {
 
   it('loading a saved calculation populates the form', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
     await screen.findByText(/You'd save/);
 
     const depositInput = getInputForLabel('Deposit');
@@ -234,7 +243,7 @@ describe('App', () => {
 
   it('deleting a saved calculation removes it from the list', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
     await screen.findByText(/You'd save/);
 
     await user.type(getInputForLabel('Name'), 'To be deleted');
@@ -248,7 +257,7 @@ describe('App', () => {
 
   it('disables saving while validation issues are present', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
     await screen.findByText(/You'd save/);
 
     const depositInput = getInputForLabel('Deposit');

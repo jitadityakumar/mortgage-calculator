@@ -1,13 +1,8 @@
-import {
-  DEFAULT_CONFIG,
-  DEFAULT_REMORTGAGE_GAP_MONTHS,
-  DEFAULT_SAVINGS_PAYOUT_INTERVAL_YEARS,
-  DEFAULT_VARIABLE_RATE_PLACEHOLDER_PCT,
-} from '../api/defaults';
 import type {
   AllowanceBasis,
   BankedSavingsDestination,
   MonthlyOverpaymentAmountMode,
+  MortgageDefaults,
   OverpaymentMode,
   RateAfterFixedTermMode,
 } from '../api/types';
@@ -53,37 +48,48 @@ export interface FormState {
   arrangementFeeAddedToLoan: boolean;
 }
 
-export const DEFAULT_FORM_STATE: FormState = {
-  propertyValue: '450000',
-  deposit: '80000',
-  fixedRatePct: '4.5',
-  fixedTermYears: '5',
-  variableRatePct: String(DEFAULT_VARIABLE_RATE_PLACEHOLDER_PCT),
-  totalTermYears: '25',
+/**
+ * Builds the form's initial pre-fill state from the backend's GET
+ * /api/v1/defaults response — the single source of truth for every
+ * calculation-fallback default (see backend/app/engine/defaults.json).
+ * Fields below with no calculation-default equivalent (propertyValue,
+ * currentRent, monthlySavings, serviceCharge, fixedMonthlyOverpayment,
+ * targetAllowanceUtilizationPct, rateAfterFixedTermMode, isFirstTimeBuyer,
+ * showAdvanced) are pure UI demo/convenience values, kept as literals here.
+ */
+export function buildDefaultFormState(defaults: MortgageDefaults): FormState {
+  return {
+    propertyValue: '450000',
+    deposit: String(defaults.deposit),
+    fixedRatePct: String(defaults.fixedRateAnnualPct),
+    fixedTermYears: String(defaults.fixedTermMonths / 12),
+    variableRatePct: String(defaults.variableRateAnnualPct),
+    totalTermYears: String(defaults.totalTermMonths / 12),
 
-  overpaymentMode: 'reduceTerm',
-  currentRent: '2300',
-  monthlySavings: '2000',
-  serviceCharge: '500',
+    overpaymentMode: defaults.overpaymentMode,
+    currentRent: '2300',
+    monthlySavings: '2000',
+    serviceCharge: '500',
 
-  monthlyOverpaymentAmountMode: 'auto',
-  fixedMonthlyOverpayment: '300',
-  targetAllowanceUtilizationPct: '50',
+    monthlyOverpaymentAmountMode: defaults.monthlyOverpaymentAmountMode,
+    fixedMonthlyOverpayment: '300',
+    targetAllowanceUtilizationPct: '50',
 
-  bankedSavingsDestination: 'lumpSumEachCycle',
-  savingsPayoutIntervalYears: String(DEFAULT_SAVINGS_PAYOUT_INTERVAL_YEARS),
-  rateAfterFixedTermMode: 'remortgageToNewFixed',
-  remortgageGapMonths: String(DEFAULT_REMORTGAGE_GAP_MONTHS),
+    bankedSavingsDestination: defaults.bankedSavingsDestination,
+    savingsPayoutIntervalYears: String(defaults.savingsPayoutIntervalYears),
+    rateAfterFixedTermMode: 'remortgageToNewFixed',
+    remortgageGapMonths: String(defaults.remortgageGapMonths),
 
-  lumpSums: [],
+    lumpSums: [],
 
-  isFirstTimeBuyer: false,
+    isFirstTimeBuyer: false,
 
-  showAdvanced: false,
-  annualOverpaymentAllowancePct: String(DEFAULT_CONFIG.annualOverpaymentAllowancePct),
-  allowanceBasis: DEFAULT_CONFIG.allowanceBasis,
-  ercRateOnExcessPct: String(DEFAULT_CONFIG.ercRateOnExcessPct),
-  ercAppliesDuringFixedTermOnly: DEFAULT_CONFIG.ercAppliesDuringFixedTermOnly,
-  arrangementFee: String(DEFAULT_CONFIG.arrangementFee),
-  arrangementFeeAddedToLoan: DEFAULT_CONFIG.arrangementFeeAddedToLoan,
-};
+    showAdvanced: false,
+    annualOverpaymentAllowancePct: String(defaults.config.annualOverpaymentAllowancePct),
+    allowanceBasis: defaults.config.allowanceBasis,
+    ercRateOnExcessPct: String(defaults.config.ercRateOnExcessPct),
+    ercAppliesDuringFixedTermOnly: defaults.config.ercAppliesDuringFixedTermOnly,
+    arrangementFee: String(defaults.config.arrangementFee),
+    arrangementFeeAddedToLoan: defaults.config.arrangementFeeAddedToLoan,
+  };
+}

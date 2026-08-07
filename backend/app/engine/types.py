@@ -39,6 +39,25 @@ class MortgageConfigOverrides(BaseModel):
     arrangementFeeAddedToLoan: Optional[bool] = None
 
 
+class MortgageDefaults(BaseModel):
+    """The single source of truth for every default value used to fill in an
+    unspecified field — for both a partial /calculate request (deposit,
+    rate, term fields; see resolve_mortgage_inputs()) and the frontend's
+    form pre-fill (GET /api/v1/defaults). Backed by defaults.json."""
+
+    config: MortgageConfig
+    variableRateAnnualPct: float
+    remortgageGapMonths: float
+    savingsPayoutIntervalYears: float
+    fixedRateAnnualPct: float
+    fixedTermMonths: float
+    totalTermMonths: float
+    deposit: float
+    overpaymentMode: OverpaymentMode
+    monthlyOverpaymentAmountMode: MonthlyOverpaymentAmountMode
+    bankedSavingsDestination: BankedSavingsDestination
+
+
 class MortgageInputs(BaseModel):
     propertyValue: float
     # deposit/rate/term fields are optional so callers who only know
