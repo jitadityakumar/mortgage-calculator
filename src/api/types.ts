@@ -107,3 +107,23 @@ export interface SavedCalculationDetail {
   createdAt: string;
   inputs: MortgageInputs;
 }
+
+/**
+ * The single source of truth for default values, served by GET
+ * /api/v1/defaults — backed by backend/app/engine/defaults.json. The form's
+ * pre-fill (buildDefaultFormState in types/formState.ts) is built from this
+ * response instead of hardcoding a second copy.
+ */
+export interface MortgageDefaults {
+  config: MortgageConfig;
+  variableRateAnnualPct: number;
+  remortgageGapMonths: number;
+  savingsPayoutIntervalYears: number;
+  fixedRateAnnualPct: number;
+  fixedTermMonths: number;
+  totalTermMonths: number;
+  deposit: number;
+  overpaymentMode: OverpaymentMode;
+  monthlyOverpaymentAmountMode: MonthlyOverpaymentAmountMode;
+  bankedSavingsDestination: BankedSavingsDestination;
+}

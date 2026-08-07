@@ -8,6 +8,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.db.session import Base, get_db
+from app.engine import DEFAULT_DEPOSIT
 from app.main import app
 
 SAMPLE_INPUTS = {
@@ -125,10 +126,11 @@ def test_create_with_only_property_value_resolves_defaults_before_storing(client
     )
     assert response.status_code == 201
     body = response.json()
-    # 10% default deposit; the point of this test is that these are real
-    # numbers rather than nulls (which would otherwise crash summary
-    # serialization and any later list call — see issue #5).
-    assert body["deposit"] == 25_000
+    # The point of this test is that these are real numbers rather than
+    # nulls (which would otherwise crash summary serialization and any
+    # later list call — see issue #5), not the exact default values
+    # themselves (covered in test_mortgage.py / test_api.py).
+    assert body["deposit"] == DEFAULT_DEPOSIT
     assert body["totalTermMonths"] == 300
 
     listing = client.get("/api/v1/saved-calculations")

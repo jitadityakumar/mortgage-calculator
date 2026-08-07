@@ -1,9 +1,4 @@
-import type { MortgageInputs } from './api/types';
-import {
-  DEFAULT_CONFIG,
-  DEFAULT_REMORTGAGE_GAP_MONTHS,
-  DEFAULT_SAVINGS_PAYOUT_INTERVAL_YEARS,
-} from './api/defaults';
+import type { MortgageDefaults, MortgageInputs } from './api/types';
 import { parseNum } from './format';
 import type { FormState, LumpSumFormRow } from './types/formState';
 
@@ -50,8 +45,12 @@ export function mapFormStateToInputs(form: FormState): MortgageInputs {
  * values with no MortgageInputs equivalent (isFirstTimeBuyer, showAdvanced —
  * pure UI state, never persisted) and lump-sum row ids (regenerated fresh
  * rather than persisted, since they're a React key, not data). */
-export function mapInputsToFormState(inputs: MortgageInputs, currentForm: FormState): FormState {
-  // Strip null/undefined before merging over DEFAULT_CONFIG: a saved
+export function mapInputsToFormState(
+  inputs: MortgageInputs,
+  currentForm: FormState,
+  defaults: MortgageDefaults,
+): FormState {
+  // Strip null/undefined before merging over defaults.config: a saved
   // calculation's `config` came back from the API as a full object with
   // explicit `null`s for any field that was never set (Pydantic doesn't
   // omit them), and object spread only skips *absent* keys, not null ones —
@@ -59,7 +58,7 @@ export function mapInputsToFormState(inputs: MortgageInputs, currentForm: FormSt
   const definedOverrides = Object.fromEntries(
     Object.entries(inputs.config ?? {}).filter(([, v]) => v !== null && v !== undefined),
   );
-  const config = { ...DEFAULT_CONFIG, ...definedOverrides };
+  const config = { ...defaults.config, ...definedOverrides };
   const lumpSums: LumpSumFormRow[] = (inputs.lumpSums ?? []).map((l) => ({
     id: crypto.randomUUID(),
     month: String(l.atMonth),
@@ -95,9 +94,9 @@ export function mapInputsToFormState(inputs: MortgageInputs, currentForm: FormSt
     bankedSavingsDestination: inputs.bankedSavingsDestination ?? currentForm.bankedSavingsDestination,
     // 0 would be an invalid value here (validate_inputs rejects <= 0), not a
     // no-op, so fall back to the engine's real default instead.
-    savingsPayoutIntervalYears: String(inputs.savingsPayoutIntervalYears ?? DEFAULT_SAVINGS_PAYOUT_INTERVAL_YEARS),
+    savingsPayoutIntervalYears: String(inputs.savingsPayoutIntervalYears ?? defaults.savingsPayoutIntervalYears),
     rateAfterFixedTermMode: inputs.rateAfterFixedTermMode ?? currentForm.rateAfterFixedTermMode,
-    remortgageGapMonths: String(inputs.remortgageGapMonths ?? DEFAULT_REMORTGAGE_GAP_MONTHS),
+    remortgageGapMonths: String(inputs.remortgageGapMonths ?? defaults.remortgageGapMonths),
 
     lumpSums,
 

@@ -1,0 +1,20 @@
+{
+  "config": {
+    "annualOverpaymentAllowancePct": 10,
+    "allowanceBasis": "outstanding",
+    "ercRateOnExcessPct": 3,
+    "ercAppliesDuringFixedTermOnly": true,
+    "arrangementFee": 0,
+    "arrangementFeeAddedToLoan": false
+  },
+  "variableRateAnnualPct": 7.25,
+  "remortgageGapMonths": 2,
+  "savingsPayoutIntervalYears": 1,
+  "fixedRateAnnualPct": 4.5,
+  "fixedTermMonths": 60,
+  "totalTermMonths": 300,
+  "deposit": 80000,
+  "overpaymentMode": "reduceTerm",
+  "monthlyOverpaymentAmountMode": "auto",
+  "bankedSavingsDestination": "lumpSumEachCycle"
+}

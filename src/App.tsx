@@ -11,11 +11,16 @@ import { SaveCalculation } from './components/SaveCalculation';
 import { SavedCalculationsList } from './components/SavedCalculationsList';
 import { SdltCalculator } from './components/SdltCalculator';
 import { ValidationErrors } from './components/ValidationErrors';
-import { ApiValidationError, compareWithAndWithoutOverpayments, getSavedCalculation } from './api/client';
-import type { ComparisonResult, MortgageInputs } from './api/types';
+import {
+  ApiValidationError,
+  compareWithAndWithoutOverpayments,
+  fetchDefaults,
+  getSavedCalculation,
+} from './api/client';
+import type { ComparisonResult, MortgageDefaults, MortgageInputs } from './api/types';
 import { computeHasOverpayments } from './hasOverpayments';
 import { mapFormStateToInputs, mapInputsToFormState } from './mapFormState';
-import { DEFAULT_FORM_STATE, type FormState } from './types/formState';
+import { buildDefaultFormState, type FormState } from './types/formState';
 
 // Recalculation is now a network round-trip (the FE no longer calculates
 // anything itself), so debounce it rather than firing on every keystroke.
@@ -36,8 +41,64 @@ interface ComparisonState {
   inputs: MortgageInputs;
 }
 
+/**
+ * Fetches the shared defaults (GET /api/v1/defaults) before rendering the
+ * actual form, so buildDefaultFormState() always has real values rather
+ * than a hardcoded second copy of the backend's numbers (see issue #5
+ * follow-up). Brief loading/error states here are the tradeoff for that.
+ */
 function App() {
-  const [form, setForm] = useState<FormState>(DEFAULT_FORM_STATE);
+  const [defaults, setDefaults] = useState<MortgageDefaults | null>(null);
+  const [defaultsError, setDefaultsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchDefaults()
+      .then((d) => {
+        if (!cancelled) setDefaults(d);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        console.error('Failed to load defaults:', err);
+        setDefaultsError('Could not reach the calculation service. Please refresh to try again.');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (defaultsError) {
+    return (
+      <div className="app-shell">
+        <header>
+          <h1>Mortgage calculator</h1>
+        </header>
+        <div className="card errors" role="alert">
+          <h2>Something went wrong</h2>
+          <p>{defaultsError}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!defaults) {
+    return (
+      <div className="app-shell">
+        <header>
+          <h1>Mortgage calculator</h1>
+        </header>
+        <p className="field-hint" aria-live="polite">
+          Loading…
+        </p>
+      </div>
+    );
+  }
+
+  return <MortgageCalculator defaults={defaults} />;
+}
+
+function MortgageCalculator({ defaults }: { defaults: MortgageDefaults }) {
+  const [form, setForm] = useState<FormState>(() => buildDefaultFormState(defaults));
   const [result, setResult] = useState<ComparisonState | null>(null);
   const [issues, setIssues] = useState<string[]>([]);
   const [networkError, setNetworkError] = useState<string | null>(null);
@@ -53,7 +114,7 @@ function App() {
     setLoadError(null);
     try {
       const detail = await getSavedCalculation(id);
-      setForm((prev) => mapInputsToFormState(detail.inputs, prev));
+      setForm((prev) => mapInputsToFormState(detail.inputs, prev, defaults));
     } catch (err) {
       console.error('Failed to load saved calculation:', err);
       setLoadError('Could not load that saved calculation.');

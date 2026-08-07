@@ -3,11 +3,36 @@ import { computeHasOverpayments } from '../hasOverpayments';
 import type {
   ComparisonResult,
   MonthlyScheduleEntry,
+  MortgageDefaults,
   MortgageInputs,
   MortgageResult,
   SavedCalculationDetail,
   SavedCalculationSummary,
 } from '../api/types';
+
+// Mirrors backend/app/engine/defaults.json — kept in sync by hand here since
+// the mock can't fetch the real file; if these drift, App.test.tsx keeps
+// passing but the mocked pre-fill diverges from what a real backend serves.
+export const MOCK_DEFAULTS: MortgageDefaults = {
+  config: {
+    annualOverpaymentAllowancePct: 10,
+    allowanceBasis: 'outstanding',
+    ercRateOnExcessPct: 3,
+    ercAppliesDuringFixedTermOnly: true,
+    arrangementFee: 0,
+    arrangementFeeAddedToLoan: false,
+  },
+  variableRateAnnualPct: 7.25,
+  remortgageGapMonths: 2,
+  savingsPayoutIntervalYears: 1,
+  fixedRateAnnualPct: 4.5,
+  fixedTermMonths: 60,
+  totalTermMonths: 300,
+  deposit: 80_000,
+  overpaymentMode: 'reduceTerm',
+  monthlyOverpaymentAmountMode: 'auto',
+  bankedSavingsDestination: 'lumpSumEachCycle',
+};
 
 /**
  * Test-only stand-in for the FastAPI backend. App.test.tsx exercises UI
@@ -104,9 +129,20 @@ function jsonResponse(body: unknown, status = 200): Response {
 let savedCalculations: SavedCalculationDetail[] = [];
 let nextSavedId = 1;
 
+// Lets a test simulate GET /api/v1/defaults failing (e.g. App.tsx's
+// defaultsError branch), without needing a separate fetch mock per test.
+// Reset before every test so a failure simulated in one test can't leak
+// into the next.
+let defaultsShouldFail = false;
+
+export function setDefaultsShouldFail(shouldFail: boolean) {
+  defaultsShouldFail = shouldFail;
+}
+
 beforeEach(() => {
   savedCalculations = [];
   nextSavedId = 1;
+  defaultsShouldFail = false;
 });
 
 export function installMockApi() {
@@ -115,6 +151,14 @@ export function installMockApi() {
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = typeof input === 'string' ? input : input.toString();
       const method = init?.method ?? 'GET';
+
+      if (method === 'GET' && url.endsWith('/api/v1/defaults')) {
+        if (defaultsShouldFail) {
+          return jsonResponse({ detail: 'Internal Server Error' }, 500);
+        }
+        return jsonResponse(MOCK_DEFAULTS);
+      }
+
       const savedMatch = url.match(/\/api\/v1\/saved-calculations(?:\/(\d+))?$/);
 
       if (savedMatch) {

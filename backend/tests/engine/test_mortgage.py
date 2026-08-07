@@ -3,6 +3,7 @@ import math
 import pytest
 
 from app.engine import (
+    DEFAULT_DEPOSIT,
     MortgageValidationError,
     calculate_mortgage,
     compare_with_and_without_overpayments,
@@ -856,8 +857,9 @@ def test_a_zero_month_gap_means_never_leaving_the_fixed_tie_in_so_payouts_stay_a
 
 def test_calculate_fills_in_defaults_when_only_property_value_is_given():
     result = calculate_mortgage(MortgageInputs(propertyValue=250_000))
-    # 10% default deposit -> principal is 90% of propertyValue.
-    assert result.principal == 225_000
+    # Flat default deposit (DEFAULT_DEPOSIT, from defaults.json) -> principal
+    # is propertyValue minus that flat amount, not a percentage.
+    assert result.principal == 250_000 - DEFAULT_DEPOSIT
     assert len(result.schedule) == 300
 
 
@@ -869,7 +871,7 @@ def test_calculate_only_fills_defaults_for_fields_left_unset():
     assert explicit.principal == 200_000
     # Caller-supplied fields are untouched by default-filling.
     assert explicit.schedule[0].ratePct == 5
-    assert defaulted_deposit.principal == 225_000
+    assert defaulted_deposit.principal == 250_000 - DEFAULT_DEPOSIT
 
 
 def test_calculate_with_all_fields_given_ignores_defaults_entirely():
