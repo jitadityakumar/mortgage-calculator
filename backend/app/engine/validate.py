@@ -8,6 +8,11 @@ def _is_integer(x: float) -> bool:
 
 
 def validate_inputs(inputs: MortgageInputs) -> list[str]:
+    """Assumes `inputs` has already been through resolve_mortgage_inputs() —
+    deposit/rate/term fields are typed Optional to support partial input
+    from callers (issue #5), but this function reads them as plain floats,
+    so a None here raises a TypeError rather than reporting a clean issue.
+    calculate_mortgage() is the only caller and resolves first."""
     issues: list[str] = []
 
     if not (inputs.propertyValue > 0):

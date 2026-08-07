@@ -41,13 +41,17 @@ class MortgageConfigOverrides(BaseModel):
 
 class MortgageInputs(BaseModel):
     propertyValue: float
-    deposit: float
-    fixedRateAnnualPct: float
+    # deposit/rate/term fields are optional so callers who only know
+    # propertyValue (e.g. a quick affordability estimate from a listing
+    # price) can omit them — resolve_mortgage_inputs() fills sensible
+    # defaults before validation/calculation ever see a None here.
+    deposit: Optional[float] = None
+    fixedRateAnnualPct: Optional[float] = None
     # float, not int: see LumpSumOverpayment.atMonth comment above — same
     # reasoning applies to every "whole number of months" field here.
-    fixedTermMonths: float
-    variableRateAnnualPct: float
-    totalTermMonths: float
+    fixedTermMonths: Optional[float] = None
+    variableRateAnnualPct: Optional[float] = None
+    totalTermMonths: Optional[float] = None
 
     lumpSums: Optional[list[LumpSumOverpayment]] = None
     overpaymentMode: Optional[OverpaymentMode] = None
