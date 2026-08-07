@@ -1,6 +1,11 @@
 from __future__ import annotations
 
-from .config import DEFAULT_REMORTGAGE_GAP_MONTHS, DEFAULT_SAVINGS_PAYOUT_INTERVAL_YEARS, resolve_config
+from .config import (
+    DEFAULT_REMORTGAGE_GAP_MONTHS,
+    DEFAULT_SAVINGS_PAYOUT_INTERVAL_YEARS,
+    resolve_config,
+    resolve_mortgage_inputs,
+)
 from .money import js_round, pence_to_pounds, pounds_to_pence
 from .types import (
     ComparisonResult,
@@ -34,6 +39,7 @@ def _compute_allowance_limit_pence(balance_pence: int, original_principal_pence:
 
 
 def calculate_mortgage(inputs: MortgageInputs) -> MortgageResult:
+    inputs = resolve_mortgage_inputs(inputs)
     issues = validate_inputs(inputs)
     if issues:
         raise MortgageValidationError(issues)

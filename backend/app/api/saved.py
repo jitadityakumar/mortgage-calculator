@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.db.models import SavedCalculation
 from app.db.session import get_db
+from app.engine.config import resolve_mortgage_inputs
 from app.engine.types import MortgageInputs
 
 router = APIRouter(prefix="/api/v1/saved-calculations", tags=["saved-calculations"])
@@ -70,7 +71,13 @@ def _get_or_404(db: Session, calculation_id: int) -> SavedCalculation:
 
 @router.post("", response_model=SavedCalculationSummary, status_code=201)
 def create_saved_calculation(body: SaveCalculationRequest, db: Session = Depends(get_db)) -> SavedCalculationSummary:
-    row = SavedCalculation(name=body.name, inputs_json=body.inputs.model_dump_json())
+    # Resolve deposit/rate/term defaults before persisting: a saved
+    # calculation must always recompute the same result on load (see
+    # get_saved_calculation), and SavedCalculationSummary's fields aren't
+    # optional, so a partial-input save (now allowed by /calculate, issue
+    # #5) must not be stored with nulls.
+    resolved_inputs = resolve_mortgage_inputs(body.inputs)
+    row = SavedCalculation(name=body.name, inputs_json=resolved_inputs.model_dump_json())
     db.add(row)
     db.commit()
     db.refresh(row)

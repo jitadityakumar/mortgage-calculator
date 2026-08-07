@@ -119,6 +119,25 @@ def test_created_at_is_timezone_aware(client: TestClient) -> None:
     assert detail["createdAt"].endswith("+00:00") or detail["createdAt"].endswith("Z")
 
 
+def test_create_with_only_property_value_resolves_defaults_before_storing(client: TestClient) -> None:
+    response = client.post(
+        "/api/v1/saved-calculations", json={"name": "Quick estimate", "inputs": {"propertyValue": 250_000}}
+    )
+    assert response.status_code == 201
+    body = response.json()
+    # 10% default deposit; the point of this test is that these are real
+    # numbers rather than nulls (which would otherwise crash summary
+    # serialization and any later list call — see issue #5).
+    assert body["deposit"] == 25_000
+    assert body["totalTermMonths"] == 300
+
+    listing = client.get("/api/v1/saved-calculations")
+    assert listing.status_code == 200
+
+    detail = client.get(f"/api/v1/saved-calculations/{body['id']}").json()
+    assert detail["inputs"]["fixedRateAnnualPct"] == 4.5
+
+
 def test_saved_calculation_stores_inputs_not_computed_result(client: TestClient) -> None:
     # Saving twice with the same inputs should be independent rows, each
     # recomputable on load rather than sharing a cached result.

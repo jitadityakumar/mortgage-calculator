@@ -68,6 +68,31 @@ def test_calculate_returns_400_with_issues_for_invalid_inputs() -> None:
     assert any("Deposit must be less than" in issue for issue in body["issues"])
 
 
+def test_compare_with_only_property_value_uses_defaults() -> None:
+    response = client.post("/api/v1/compare", json={"propertyValue": 250_000})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["withOverpayments"]["principal"] == 225_000
+    assert body["withoutOverpayments"]["principal"] == 225_000
+
+
+def test_calculate_with_only_property_value_uses_defaults() -> None:
+    response = client.post("/api/v1/calculate", json={"propertyValue": 250_000})
+    assert response.status_code == 200
+    body = response.json()
+    # 10% default deposit -> principal is 90% of propertyValue.
+    assert body["principal"] == 225_000
+    assert len(body["schedule"]) == 300
+
+
+def test_calculate_with_property_value_and_deposit_only_uses_defaults_for_rest() -> None:
+    response = client.post("/api/v1/calculate", json={"propertyValue": 250_000, "deposit": 50_000})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["principal"] == 200_000
+    assert len(body["schedule"]) == 300
+
+
 def test_calculate_returns_422_for_malformed_request_body() -> None:
     response = client.post("/api/v1/calculate", json={"propertyValue": "not-a-number"})
     assert response.status_code == 422
