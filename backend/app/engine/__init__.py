@@ -1,18 +1,10 @@
 from .config import (
-    DEFAULT_BANKED_SAVINGS_DESTINATION,
-    DEFAULT_CONFIG,
-    DEFAULT_DEPOSIT,
-    DEFAULT_FIXED_RATE_ANNUAL_PCT,
-    DEFAULT_FIXED_TERM_MONTHS,
-    DEFAULT_MONTHLY_OVERPAYMENT_AMOUNT_MODE,
-    DEFAULT_OVERPAYMENT_MODE,
-    DEFAULT_REMORTGAGE_GAP_MONTHS,
-    DEFAULT_SAVINGS_PAYOUT_INTERVAL_YEARS,
-    DEFAULT_TOTAL_TERM_MONTHS,
-    DEFAULT_VARIABLE_RATE_PLACEHOLDER_PCT,
-    DEFAULTS,
+    load_current_defaults,
+    load_seed_defaults,
+    reset_defaults,
     resolve_config,
     resolve_mortgage_inputs,
+    update_defaults,
 )
 from .mortgage import calculate_mortgage, compare_with_and_without_overpayments
 from .sdlt import SdltBandBreakdown, SdltResult, calculate_sdlt
@@ -25,23 +17,15 @@ from .types import (
     MortgageResult,
     MortgageValidationError,
 )
-from .validate import validate_inputs
+from .validate import validate_defaults, validate_inputs
 
 __all__ = [
-    "DEFAULT_BANKED_SAVINGS_DESTINATION",
-    "DEFAULT_CONFIG",
-    "DEFAULT_DEPOSIT",
-    "DEFAULT_FIXED_RATE_ANNUAL_PCT",
-    "DEFAULT_FIXED_TERM_MONTHS",
-    "DEFAULT_MONTHLY_OVERPAYMENT_AMOUNT_MODE",
-    "DEFAULT_OVERPAYMENT_MODE",
-    "DEFAULT_REMORTGAGE_GAP_MONTHS",
-    "DEFAULT_SAVINGS_PAYOUT_INTERVAL_YEARS",
-    "DEFAULT_TOTAL_TERM_MONTHS",
-    "DEFAULT_VARIABLE_RATE_PLACEHOLDER_PCT",
-    "DEFAULTS",
+    "load_current_defaults",
+    "load_seed_defaults",
+    "reset_defaults",
     "resolve_config",
     "resolve_mortgage_inputs",
+    "update_defaults",
     "calculate_mortgage",
     "compare_with_and_without_overpayments",
     "SdltBandBreakdown",
@@ -54,5 +38,6 @@ __all__ = [
     "MortgageInputs",
     "MortgageResult",
     "MortgageValidationError",
+    "validate_defaults",
     "validate_inputs",
 ]

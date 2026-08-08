@@ -240,6 +240,11 @@ fieldset {
   align-items: center;
 }
 
+.admin-actions {
+  display: flex;
+  gap: 10px;
+}
+
 .lump-sum-row {
   display: flex;
   gap: 10px;

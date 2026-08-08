@@ -32,6 +32,7 @@ export const MOCK_DEFAULTS: MortgageDefaults = {
   overpaymentMode: 'reduceTerm',
   monthlyOverpaymentAmountMode: 'auto',
   bankedSavingsDestination: 'lumpSumEachCycle',
+  updatedAt: null,
 };
 
 /**
@@ -139,10 +140,22 @@ export function setDefaultsShouldFail(shouldFail: boolean) {
   defaultsShouldFail = shouldFail;
 }
 
+// Mutable "current" defaults for the admin page's GET/PUT/reset round trip —
+// separate from the immutable MOCK_DEFAULTS constant so a PUT in one test
+// can't leak into another. Reset before every test.
+let currentDefaults: MortgageDefaults = { ...MOCK_DEFAULTS };
+let defaultsPutShouldFail = false;
+
+export function setDefaultsPutShouldFail(shouldFail: boolean) {
+  defaultsPutShouldFail = shouldFail;
+}
+
 beforeEach(() => {
   savedCalculations = [];
   nextSavedId = 1;
   defaultsShouldFail = false;
+  currentDefaults = { ...MOCK_DEFAULTS };
+  defaultsPutShouldFail = false;
 });
 
 export function installMockApi() {
@@ -156,7 +169,21 @@ export function installMockApi() {
         if (defaultsShouldFail) {
           return jsonResponse({ detail: 'Internal Server Error' }, 500);
         }
-        return jsonResponse(MOCK_DEFAULTS);
+        return jsonResponse(currentDefaults);
+      }
+
+      if (method === 'PUT' && url.endsWith('/api/v1/defaults')) {
+        if (defaultsPutShouldFail) {
+          return jsonResponse({ detail: 'Invalid defaults', issues: ['Default deposit cannot be negative.'] }, 400);
+        }
+        const body = JSON.parse((init?.body as string) ?? '{}') as MortgageDefaults;
+        currentDefaults = { ...body, updatedAt: new Date().toISOString() };
+        return jsonResponse(currentDefaults);
+      }
+
+      if (method === 'POST' && url.endsWith('/api/v1/defaults/reset')) {
+        currentDefaults = { ...MOCK_DEFAULTS, updatedAt: new Date().toISOString() };
+        return jsonResponse(currentDefaults);
       }
 
       const savedMatch = url.match(/\/api\/v1\/saved-calculations(?:\/(\d+))?$/);

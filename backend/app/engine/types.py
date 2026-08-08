@@ -43,7 +43,9 @@ class MortgageDefaults(BaseModel):
     """The single source of truth for every default value used to fill in an
     unspecified field — for both a partial /calculate request (deposit,
     rate, term fields; see resolve_mortgage_inputs()) and the frontend's
-    form pre-fill (GET /api/v1/defaults). Backed by defaults.json."""
+    form pre-fill (GET /api/v1/defaults). Runtime values are stored in the
+    defaults_config DB table (admin-editable); defaults.json is only the
+    seed/reset target — see app.engine.config.load_seed_defaults()."""
 
     config: MortgageConfig
     variableRateAnnualPct: float
@@ -56,6 +58,9 @@ class MortgageDefaults(BaseModel):
     overpaymentMode: OverpaymentMode
     monthlyOverpaymentAmountMode: MonthlyOverpaymentAmountMode
     bankedSavingsDestination: BankedSavingsDestination
+    # None when loaded from defaults.json (load_seed_defaults()) rather than
+    # the DB — the seed file itself was never "updated".
+    updatedAt: Optional[str] = None
 
 
 class MortgageInputs(BaseModel):

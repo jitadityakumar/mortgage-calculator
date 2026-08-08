@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from .types import MortgageInputs
+from .types import MortgageDefaults, MortgageInputs
 
 
 def _is_integer(x: float) -> bool:
@@ -58,5 +58,45 @@ def validate_inputs(inputs: MortgageInputs) -> list[str]:
             issues.append(f"Lump sum #{i + 1}: amount must be greater than 0.")
         if not _is_integer(lump.atMonth) or lump.atMonth < 1:
             issues.append(f"Lump sum #{i + 1}: month must be a whole number ≥ 1.")
+
+    return issues
+
+
+def validate_defaults(d: MortgageDefaults) -> list[str]:
+    """Guards the admin-editable defaults (PUT /api/v1/defaults) against
+    values that would silently poison every partial /calculate request,
+    saved-calculation resolution, and the FE's form pre-fill from then on —
+    unlike a bad one-off /calculate call, a bad default persists until
+    someone finds the admin page again. Mirrors validate_inputs' style;
+    can't check deposit < propertyValue here since there's no propertyValue
+    in this context — that stays a per-request check."""
+    issues: list[str] = []
+
+    if d.deposit < 0:
+        issues.append("Default deposit cannot be negative.")
+    if not (0 <= d.fixedRateAnnualPct <= 100):
+        issues.append("Default fixed rate must be between 0 and 100%.")
+    if not (0 <= d.variableRateAnnualPct <= 100):
+        issues.append("Default variable rate must be between 0 and 100%.")
+    if not _is_integer(d.totalTermMonths) or d.totalTermMonths <= 0:
+        issues.append("Default total mortgage term must be a positive whole number of months.")
+    if not _is_integer(d.fixedTermMonths) or d.fixedTermMonths < 0:
+        issues.append("Default fixed term must be a non-negative whole number of months.")
+    if (
+        _is_integer(d.totalTermMonths)
+        and _is_integer(d.fixedTermMonths)
+        and d.fixedTermMonths > d.totalTermMonths
+    ):
+        issues.append("Default fixed term cannot be longer than the default total mortgage term.")
+    if not _is_integer(d.remortgageGapMonths) or d.remortgageGapMonths < 0:
+        issues.append("Default remortgage gap must be a non-negative whole number of months.")
+    if d.savingsPayoutIntervalYears <= 0:
+        issues.append("Default savings payout interval must be greater than 0 years.")
+    if not (0 <= d.config.annualOverpaymentAllowancePct <= 100):
+        issues.append("Default annual overpayment allowance must be between 0 and 100%.")
+    if not (0 <= d.config.ercRateOnExcessPct <= 100):
+        issues.append("Default ERC rate must be between 0 and 100%.")
+    if d.config.arrangementFee < 0:
+        issues.append("Default arrangement fee cannot be negative.")
 
     return issues

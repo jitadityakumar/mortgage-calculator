@@ -194,7 +194,7 @@ function MortgageCalculator({ defaults }: { defaults: MortgageDefaults }) {
       <header>
         <h1>Mortgage calculator</h1>
         <p className="subtitle">
-          For a mortgage in England. Figures are estimates, not financial advice.
+          For a mortgage in England. Figures are estimates, not financial advice. <a href="/admin">Admin</a>
         </p>
       </header>
 

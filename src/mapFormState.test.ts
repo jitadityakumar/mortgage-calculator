@@ -22,6 +22,7 @@ const TEST_DEFAULTS: MortgageDefaults = {
   overpaymentMode: 'reduceTerm',
   monthlyOverpaymentAmountMode: 'auto',
   bankedSavingsDestination: 'lumpSumEachCycle',
+  updatedAt: null,
 };
 
 const DEFAULT_FORM_STATE = buildDefaultFormState(TEST_DEFAULTS);

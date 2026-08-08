@@ -21,11 +21,16 @@ export class ApiValidationError extends Error {
   }
 }
 
-async function postJson<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
+async function sendJson<T>(
+  method: 'POST' | 'PUT',
+  path: string,
+  body?: unknown,
+  signal?: AbortSignal,
+): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
-    method: 'POST',
+    method,
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    body: body !== undefined ? JSON.stringify(body) : undefined,
     signal,
   });
 
@@ -45,6 +50,14 @@ async function postJson<T>(path: string, body: unknown, signal?: AbortSignal): P
     throw new Error(`Request to ${path} failed with status ${response.status}`);
   }
   return response.json() as Promise<T>;
+}
+
+function postJson<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
+  return sendJson<T>('POST', path, body, signal);
+}
+
+function putJson<T>(path: string, body: unknown): Promise<T> {
+  return sendJson<T>('PUT', path, body);
 }
 
 export function calculateMortgage(inputs: MortgageInputs, signal?: AbortSignal): Promise<MortgageResult> {
@@ -68,6 +81,17 @@ async function getJson<T>(path: string): Promise<T> {
 
 export function fetchDefaults(): Promise<MortgageDefaults> {
   return getJson<MortgageDefaults>('/defaults');
+}
+
+/** Admin-only write path (see AdminPage.tsx) — surfaces a 400 as
+ * ApiValidationError the same way calculate/compare do, since the backend's
+ * PUT /defaults raises the same MortgageValidationError shape. */
+export function updateDefaults(defaults: MortgageDefaults): Promise<MortgageDefaults> {
+  return putJson<MortgageDefaults>('/defaults', defaults);
+}
+
+export function resetDefaults(): Promise<MortgageDefaults> {
+  return postJson<MortgageDefaults>('/defaults/reset', undefined);
 }
 
 export function listSavedCalculations(): Promise<SavedCalculationSummary[]> {

@@ -3,12 +3,14 @@ import math
 import pytest
 
 from app.engine import (
-    DEFAULT_DEPOSIT,
     MortgageValidationError,
     calculate_mortgage,
     compare_with_and_without_overpayments,
+    load_seed_defaults,
 )
 from app.engine.types import MortgageInputs
+
+DEFAULT_DEPOSIT = load_seed_defaults().deposit
 
 
 def reference_monthly_payment(principal: float, annual_pct: float, months: int) -> float:

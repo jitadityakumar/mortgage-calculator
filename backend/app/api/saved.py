@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.db.models import SavedCalculation
 from app.db.session import get_db
-from app.engine.config import resolve_mortgage_inputs
+from app.engine.config import load_current_defaults, resolve_mortgage_inputs
 from app.engine.types import MortgageInputs
 
 router = APIRouter(prefix="/api/v1/saved-calculations", tags=["saved-calculations"])
@@ -76,7 +76,7 @@ def create_saved_calculation(body: SaveCalculationRequest, db: Session = Depends
     # get_saved_calculation), and SavedCalculationSummary's fields aren't
     # optional, so a partial-input save (now allowed by /calculate, issue
     # #5) must not be stored with nulls.
-    resolved_inputs = resolve_mortgage_inputs(body.inputs)
+    resolved_inputs = resolve_mortgage_inputs(body.inputs, load_current_defaults(db))
     row = SavedCalculation(name=body.name, inputs_json=resolved_inputs.model_dump_json())
     db.add(row)
     db.commit()
