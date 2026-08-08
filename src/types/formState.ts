@@ -6,6 +6,7 @@ import type {
   OverpaymentMode,
   RateAfterFixedTermMode,
 } from '../api/types';
+import { calculateSdlt } from '../engine';
 
 export interface LumpSumFormRow {
   id: string;
@@ -16,6 +17,7 @@ export interface LumpSumFormRow {
 export interface FormState {
   propertyValue: string;
   deposit: string;
+  depositSavings: string;
   fixedRatePct: string;
   fixedTermYears: string;
   variableRatePct: string;
@@ -53,14 +55,26 @@ export interface FormState {
  * /api/v1/defaults response — the single source of truth for every
  * calculation-fallback default (see backend/app/engine/defaults.json).
  * Fields below with no calculation-default equivalent (propertyValue,
- * currentRent, monthlySavings, serviceCharge, fixedMonthlyOverpayment,
- * targetAllowanceUtilizationPct, rateAfterFixedTermMode, isFirstTimeBuyer,
- * showAdvanced) are pure UI demo/convenience values, kept as literals here.
+ * depositSavings, currentRent, monthlySavings, serviceCharge,
+ * fixedMonthlyOverpayment, targetAllowanceUtilizationPct,
+ * rateAfterFixedTermMode, isFirstTimeBuyer, showAdvanced) are pure UI
+ * demo/convenience values, kept as literals here. `deposit` is the one
+ * exception: it's computed here as depositSavings minus SDLT (mirroring
+ * App.tsx's `updateDepositDriver`, not `defaults.deposit`), so the initial
+ * form already reflects the auto-fill rather than showing the raw backend
+ * default until the user first touches property value/savings/FTB status.
  */
 export function buildDefaultFormState(defaults: MortgageDefaults): FormState {
+  const propertyValue = '450000';
+  const depositSavings = '90000';
+  const isFirstTimeBuyer = true;
+  const sdlt = calculateSdlt(Number(propertyValue), isFirstTimeBuyer);
+  const deposit = Math.max(0, Math.round(Number(depositSavings) - sdlt.totalTax));
+
   return {
-    propertyValue: '450000',
-    deposit: String(defaults.deposit),
+    propertyValue,
+    deposit: String(deposit),
+    depositSavings,
     fixedRatePct: String(defaults.fixedRateAnnualPct),
     fixedTermYears: String(defaults.fixedTermMonths / 12),
     variableRatePct: String(defaults.variableRateAnnualPct),
@@ -82,7 +96,7 @@ export function buildDefaultFormState(defaults: MortgageDefaults): FormState {
 
     lumpSums: [],
 
-    isFirstTimeBuyer: false,
+    isFirstTimeBuyer,
 
     showAdvanced: false,
     annualOverpaymentAllowancePct: String(defaults.config.annualOverpaymentAllowancePct),

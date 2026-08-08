@@ -42,9 +42,12 @@ export function mapFormStateToInputs(form: FormState): MortgageInputs {
 
 /** Inverse of mapFormStateToInputs — populates a FormState from a saved
  * MortgageInputs (loaded from a saved calculation). `currentForm` supplies
- * values with no MortgageInputs equivalent (isFirstTimeBuyer, showAdvanced —
- * pure UI state, never persisted) and lump-sum row ids (regenerated fresh
- * rather than persisted, since they're a React key, not data). */
+ * values with no MortgageInputs equivalent (isFirstTimeBuyer, depositSavings,
+ * showAdvanced — pure UI state, never persisted) and lump-sum row ids
+ * (regenerated fresh rather than persisted, since they're a React key, not
+ * data). Note: `deposit` here is set from the saved `inputs.deposit` as
+ * usual; App.tsx's deposit auto-fill effect is suppressed for the load that
+ * follows so it doesn't overwrite it. */
 export function mapInputsToFormState(
   inputs: MortgageInputs,
   currentForm: FormState,

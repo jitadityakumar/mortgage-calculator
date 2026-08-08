@@ -6,10 +6,9 @@ interface SdltCalculatorProps {
   propertyValue: number;
   deposit: number;
   isFirstTimeBuyer: boolean;
-  onIsFirstTimeBuyerChange: (value: boolean) => void;
 }
 
-export function SdltCalculator({ propertyValue, deposit, isFirstTimeBuyer, onIsFirstTimeBuyerChange }: SdltCalculatorProps) {
+export function SdltCalculator({ propertyValue, deposit, isFirstTimeBuyer }: SdltCalculatorProps) {
   const [expanded, setExpanded] = useState(false);
   const sdlt = useMemo(() => calculateSdlt(propertyValue, isFirstTimeBuyer), [propertyValue, isFirstTimeBuyer]);
   const cashNeededAtCompletion = deposit + sdlt.totalTax;
@@ -21,15 +20,6 @@ export function SdltCalculator({ propertyValue, deposit, isFirstTimeBuyer, onIsF
       </button>
       {expanded && (
         <>
-          <label className="checkbox-field">
-            <input
-              type="checkbox"
-              checked={isFirstTimeBuyer}
-              onChange={(e) => onIsFirstTimeBuyerChange(e.target.checked)}
-            />
-            <span>I'm a first-time buyer</span>
-          </label>
-
           <div className="stat-grid">
             <div className="stat">
               <span className="stat-label">Stamp Duty Land Tax</span>

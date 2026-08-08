@@ -262,6 +262,38 @@ describe('App', () => {
     await waitFor(() => expect(depositInput.value).toBe('120000'));
   });
 
+  it('loading a saved calculation with a different property value does not clobber its saved deposit', async () => {
+    const user = userEvent.setup();
+    await renderApp();
+    await screen.findByText(/You'd save/);
+
+    const propertyValueInput = getInputForLabel('Property value');
+    const depositInput = getInputForLabel('Deposit');
+
+    // Changing property value auto-fills deposit (savings minus SDLT); then
+    // override deposit manually before saving, so the saved deposit is a
+    // deliberately-chosen value, not whatever the auto-fill computed.
+    await user.clear(propertyValueInput);
+    await user.type(propertyValueInput, '600000');
+    await user.clear(depositInput);
+    await user.type(depositInput, '75000');
+    await user.type(getInputForLabel('Name'), 'Pricier place');
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).not.toBeDisabled());
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await screen.findByText(/Pricier place/);
+
+    // Change property value back down — the driving field the auto-fill
+    // watches — so loading the save afterward exercises the exact path
+    // where a naive "skip the next auto-fill" flag could misfire.
+    await user.clear(propertyValueInput);
+    await user.type(propertyValueInput, '450000');
+    await waitFor(() => expect(propertyValueInput.value).toBe('450000'));
+
+    await user.click(screen.getByText(/Pricier place/));
+    await waitFor(() => expect(propertyValueInput.value).toBe('600000'));
+    expect(depositInput.value).toBe('75000');
+  });
+
   it('deleting a saved calculation removes it from the list', async () => {
     const user = userEvent.setup();
     await renderApp();

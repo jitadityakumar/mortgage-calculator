@@ -114,10 +114,11 @@ describe('mapInputsToFormState / mapFormStateToInputs round trip', () => {
     expect(form.lumpSums[0].amount).toBe('5000');
   });
 
-  it('preserves UI-only fields (isFirstTimeBuyer, showAdvanced) from the current form', () => {
-    const currentForm = { ...DEFAULT_FORM_STATE, isFirstTimeBuyer: true, showAdvanced: true };
+  it('preserves UI-only fields (isFirstTimeBuyer, depositSavings, showAdvanced) from the current form', () => {
+    const currentForm = { ...DEFAULT_FORM_STATE, isFirstTimeBuyer: true, depositSavings: '123000', showAdvanced: true };
     const form = mapInputsToFormState(FULL_INPUTS, currentForm, TEST_DEFAULTS);
     expect(form.isFirstTimeBuyer).toBe(true);
+    expect(form.depositSavings).toBe('123000');
     expect(form.showAdvanced).toBe(true);
   });
 });
