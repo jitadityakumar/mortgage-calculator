@@ -18,6 +18,8 @@ import {
   getSavedCalculation,
 } from './api/client';
 import type { ComparisonResult, MortgageDefaults, MortgageInputs } from './api/types';
+import { calculateSdlt } from './engine';
+import { parseNum } from './format';
 import { computeHasOverpayments } from './hasOverpayments';
 import { mapFormStateToInputs, mapInputsToFormState } from './mapFormState';
 import { buildDefaultFormState, type FormState } from './types/formState';
@@ -110,6 +112,28 @@ function MortgageCalculator({ defaults }: { defaults: MortgageDefaults }) {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
+  /** Deposit auto-fills as savings minus SDLT whenever savings, property
+   * value, or first-time-buyer status change (the only three fields that
+   * affect the computation) — the user can still type over the deposit
+   * field directly via plain `update`, but that override only lasts until
+   * one of these three changes again. Computed synchronously in the same
+   * setForm call that changes the driving field (rather than in a separate
+   * effect keyed on those fields) so there's no dependency on effect
+   * scheduling — loading a saved calculation goes through plain `setForm`
+   * via mapInputsToFormState instead, so the loaded deposit is never at risk
+   * of being overwritten by this. */
+  const updateDepositDriver = <K extends 'depositSavings' | 'propertyValue' | 'isFirstTimeBuyer'>(
+    field: K,
+    value: FormState[K],
+  ) => {
+    setForm((prev) => {
+      const next = { ...prev, [field]: value };
+      const sdlt = calculateSdlt(parseNum(next.propertyValue), next.isFirstTimeBuyer);
+      const computedDeposit = Math.max(0, Math.round(parseNum(next.depositSavings) - sdlt.totalTax));
+      return { ...next, deposit: String(computedDeposit) };
+    });
+  };
+
   const handleLoadSaved = async (id: number) => {
     setLoadError(null);
     try {
@@ -176,7 +200,7 @@ function MortgageCalculator({ defaults }: { defaults: MortgageDefaults }) {
 
       <div className="layout">
         <div className="form-column">
-          <CoreInputsForm form={form} update={update} />
+          <CoreInputsForm form={form} update={update} updateDepositDriver={updateDepositDriver} />
           <OverpaymentsForm
             form={form}
             update={update}
@@ -187,7 +211,6 @@ function MortgageCalculator({ defaults }: { defaults: MortgageDefaults }) {
             propertyValue={inputs.propertyValue}
             deposit={inputs.deposit}
             isFirstTimeBuyer={form.isFirstTimeBuyer}
-            onIsFirstTimeBuyerChange={(v) => update('isFirstTimeBuyer', v)}
           />
           <SavedCalculationsList refreshToken={savedRefreshToken} onLoad={handleLoadSaved} />
           <DebugState form={form} onImport={setForm} />
