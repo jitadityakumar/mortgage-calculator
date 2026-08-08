@@ -125,6 +125,15 @@ export interface MortgageDefaults {
   fixedTermMonths: number;
   totalTermMonths: number;
   deposit: number;
+  /** These three feed only buildDefaultFormState's initial pre-fill, not any
+   * calculation — "derive deposit from savings" is a client-side UX
+   * convenience (SDLT is computed client-side), not a backend concern.
+   * deriveDepositFromSavings also gates App.tsx's live deposit auto-fill
+   * (updateDepositDriver): when false, `deposit` is a plain user-controlled
+   * field that never recomputes as property value/savings/FTB change. */
+  depositSavings: number;
+  isFirstTimeBuyer: boolean;
+  deriveDepositFromSavings: boolean;
   overpaymentMode: OverpaymentMode;
   monthlyOverpaymentAmountMode: MonthlyOverpaymentAmountMode;
   bankedSavingsDestination: BankedSavingsDestination;

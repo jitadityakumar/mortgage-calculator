@@ -14,6 +14,9 @@
   "fixedTermMonths": 60,
   "totalTermMonths": 300,
   "deposit": 80000,
+  "depositSavings": 90000,
+  "isFirstTimeBuyer": true,
+  "deriveDepositFromSavings": true,
   "overpaymentMode": "reduceTerm",
   "monthlyOverpaymentAmountMode": "auto",
   "bankedSavingsDestination": "lumpSumEachCycle"

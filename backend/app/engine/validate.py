@@ -74,6 +74,8 @@ def validate_defaults(d: MortgageDefaults) -> list[str]:
 
     if d.deposit < 0:
         issues.append("Default deposit cannot be negative.")
+    if d.depositSavings < 0:
+        issues.append("Default deposit savings cannot be negative.")
     if not (0 <= d.fixedRateAnnualPct <= 100):
         issues.append("Default fixed rate must be between 0 and 100%.")
     if not (0 <= d.variableRateAnnualPct <= 100):

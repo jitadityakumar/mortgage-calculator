@@ -55,6 +55,17 @@ class MortgageDefaults(BaseModel):
     fixedTermMonths: float
     totalTermMonths: float
     deposit: float
+    # These three feed only the frontend's initial pre-fill (buildDefaultFormState
+    # in src/types/formState.ts) — not resolve_mortgage_inputs() or any engine
+    # calculation, since "derive deposit from savings" is a client-side UX
+    # convenience (SDLT is computed client-side), not a server-side calculation
+    # concern. depositSavings/isFirstTimeBuyer are the values the calculator
+    # starts with; deriveDepositFromSavings controls whether `deposit` above is
+    # shown as-is or replaced by depositSavings minus SDLT, both on first load
+    # and on every subsequent property value/savings/FTB change.
+    depositSavings: float
+    isFirstTimeBuyer: bool
+    deriveDepositFromSavings: bool
     overpaymentMode: OverpaymentMode
     monthlyOverpaymentAmountMode: MonthlyOverpaymentAmountMode
     bankedSavingsDestination: BankedSavingsDestination

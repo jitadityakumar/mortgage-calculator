@@ -76,6 +76,43 @@ describe('AdminPage', () => {
     confirmSpy.mockRestore();
   });
 
+  it('edits deposit savings and the two checkboxes, and saves', async () => {
+    const user = userEvent.setup();
+    await renderAdminPage();
+
+    expect(getInputForLabel('Deposit savings').value).toBe('90000');
+    expect(getInputForLabel('First-time buyer by default (affects SDLT, which feeds the deposit auto-fill)').checked).toBe(
+      true,
+    );
+    expect(
+      getInputForLabel('Derive deposit from savings (deposit auto-fills as Deposit savings minus SDLT, live as the user types)')
+        .checked,
+    ).toBe(true);
+
+    const savingsInput = getInputForLabel('Deposit savings');
+    await user.clear(savingsInput);
+    await user.type(savingsInput, '120000');
+    await user.click(
+      screen.getByText('First-time buyer by default (affects SDLT, which feeds the deposit auto-fill)'),
+    );
+    await user.click(
+      screen.getByText(
+        'Derive deposit from savings (deposit auto-fills as Deposit savings minus SDLT, live as the user types)',
+      ),
+    );
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await screen.findByText('Saved.');
+    expect(getInputForLabel('Deposit savings').value).toBe('120000');
+    expect(getInputForLabel('First-time buyer by default (affects SDLT, which feeds the deposit auto-fill)').checked).toBe(
+      false,
+    );
+    expect(
+      getInputForLabel('Derive deposit from savings (deposit auto-fills as Deposit savings minus SDLT, live as the user types)')
+        .checked,
+    ).toBe(false);
+  });
+
   it('does not reset when the confirmation is declined', async () => {
     const user = userEvent.setup();
     await renderAdminPage();

@@ -17,6 +17,9 @@ import { NumberField } from './NumberField';
  * save, via parseNum. */
 interface DefaultsFormState {
   deposit: string;
+  depositSavings: string;
+  isFirstTimeBuyer: boolean;
+  deriveDepositFromSavings: boolean;
   fixedRateAnnualPct: string;
   fixedTermMonths: string;
   variableRateAnnualPct: string;
@@ -37,6 +40,9 @@ interface DefaultsFormState {
 function toFormState(d: MortgageDefaults): DefaultsFormState {
   return {
     deposit: String(d.deposit),
+    depositSavings: String(d.depositSavings),
+    isFirstTimeBuyer: d.isFirstTimeBuyer,
+    deriveDepositFromSavings: d.deriveDepositFromSavings,
     fixedRateAnnualPct: String(d.fixedRateAnnualPct),
     fixedTermMonths: String(d.fixedTermMonths),
     variableRateAnnualPct: String(d.variableRateAnnualPct),
@@ -58,6 +64,9 @@ function toFormState(d: MortgageDefaults): DefaultsFormState {
 function toMortgageDefaults(form: DefaultsFormState): MortgageDefaults {
   return {
     deposit: parseNum(form.deposit),
+    depositSavings: parseNum(form.depositSavings),
+    isFirstTimeBuyer: form.isFirstTimeBuyer,
+    deriveDepositFromSavings: form.deriveDepositFromSavings,
     fixedRateAnnualPct: parseNum(form.fixedRateAnnualPct),
     fixedTermMonths: parseNum(form.fixedTermMonths),
     variableRateAnnualPct: parseNum(form.variableRateAnnualPct),
@@ -188,8 +197,36 @@ export function AdminPage() {
                 value={form.deposit}
                 onChange={(v) => update('deposit', v)}
                 step="1000"
-                hint="Server-side fallback only for a partial /calculate request or a saved calculation — does not change the calculator's own pre-filled deposit, which is computed from Deposit savings minus SDLT."
+                hint={
+                  form.deriveDepositFromSavings
+                    ? "Server-side fallback only for a partial /calculate request or a saved calculation — while 'Derive deposit from savings' is checked, the calculator's own pre-filled deposit is computed from Deposit savings minus SDLT instead of this value."
+                    : "Used everywhere, including the calculator's own pre-filled deposit, since 'Derive deposit from savings' is unchecked."
+                }
               />
+              <NumberField
+                label="Deposit savings"
+                prefix="£"
+                value={form.depositSavings}
+                onChange={(v) => update('depositSavings', v)}
+                step="1000"
+                hint="Starting value for the calculator's 'Deposit savings' field. Only feeds the deposit auto-fill while 'Derive deposit from savings' below is checked."
+              />
+              <label className="checkbox-field">
+                <input
+                  type="checkbox"
+                  checked={form.deriveDepositFromSavings}
+                  onChange={(e) => update('deriveDepositFromSavings', e.target.checked)}
+                />
+                <span>Derive deposit from savings (deposit auto-fills as Deposit savings minus SDLT, live as the user types)</span>
+              </label>
+              <label className="checkbox-field">
+                <input
+                  type="checkbox"
+                  checked={form.isFirstTimeBuyer}
+                  onChange={(e) => update('isFirstTimeBuyer', e.target.checked)}
+                />
+                <span>First-time buyer by default (affects SDLT, which feeds the deposit auto-fill)</span>
+              </label>
               <NumberField
                 label="Fixed rate"
                 suffix="% / year"

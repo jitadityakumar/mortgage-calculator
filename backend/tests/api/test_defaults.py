@@ -98,6 +98,7 @@ def test_post_reset_defaults_restores_shipped_values(client: TestClient) -> None
         {"fixedRateAnnualPct": 500},
         {"totalTermMonths": 0},
         {"fixedTermMonths": 400, "totalTermMonths": 300},
+        {"depositSavings": -1},
     ],
 )
 def test_put_defaults_rejects_invalid_values(client: TestClient, override: dict) -> None:

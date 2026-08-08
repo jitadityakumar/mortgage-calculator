@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import App from './App';
-import { setDefaultsShouldFail } from './test/mockApi';
+import { setDefaultsShouldFail, setMockDefaultsOverride } from './test/mockApi';
 
 /** Renders the app and waits for the pre-fetched defaults (GET
  * /api/v1/defaults) to resolve and the form to mount, so subsequent
@@ -292,6 +292,26 @@ describe('App', () => {
     await user.click(screen.getByText(/Pricier place/));
     await waitFor(() => expect(propertyValueInput.value).toBe('600000'));
     expect(depositInput.value).toBe('75000');
+  });
+
+  it('does not auto-fill deposit from savings when the admin default turns it off', async () => {
+    setMockDefaultsOverride({ deriveDepositFromSavings: false });
+    const user = userEvent.setup();
+    await renderApp();
+    await screen.findByText(/You'd save/);
+
+    const depositInput = getInputForLabel('Deposit');
+    // MOCK_DEFAULTS.deposit is 80_000 — with derivation off, the initial
+    // form should show that flat default, not depositSavings minus SDLT.
+    expect(depositInput.value).toBe('80000');
+
+    const propertyValueInput = getInputForLabel('Property value');
+    await user.clear(propertyValueInput);
+    await user.type(propertyValueInput, '600000');
+    await waitFor(() => expect(propertyValueInput.value).toBe('600000'));
+
+    // Deposit must stay untouched by the driving-field change.
+    expect(depositInput.value).toBe('80000');
   });
 
   it('deleting a saved calculation removes it from the list', async () => {

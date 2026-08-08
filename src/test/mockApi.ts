@@ -29,6 +29,9 @@ export const MOCK_DEFAULTS: MortgageDefaults = {
   fixedTermMonths: 60,
   totalTermMonths: 300,
   deposit: 80_000,
+  depositSavings: 90_000,
+  isFirstTimeBuyer: true,
+  deriveDepositFromSavings: true,
   overpaymentMode: 'reduceTerm',
   monthlyOverpaymentAmountMode: 'auto',
   bankedSavingsDestination: 'lumpSumEachCycle',
@@ -148,6 +151,13 @@ let defaultsPutShouldFail = false;
 
 export function setDefaultsPutShouldFail(shouldFail: boolean) {
   defaultsPutShouldFail = shouldFail;
+}
+
+/** Lets a test override what GET /api/v1/defaults returns (e.g. a test
+ * exercising deriveDepositFromSavings=false) without hand-rolling a whole
+ * MortgageDefaults object. Call before rendering. */
+export function setMockDefaultsOverride(overrides: Partial<MortgageDefaults>) {
+  currentDefaults = { ...currentDefaults, ...overrides };
 }
 
 beforeEach(() => {

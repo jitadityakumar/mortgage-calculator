@@ -40,6 +40,13 @@ export interface FormState {
   lumpSums: LumpSumFormRow[];
 
   isFirstTimeBuyer: boolean;
+  /** Gates App.tsx's updateDepositDriver: when true, `deposit` auto-recomputes
+   * from depositSavings minus SDLT on every property value/savings/FTB
+   * change (and is precomputed that way below, on initial load); when false,
+   * `deposit` is a plain user-controlled field that never auto-recomputes.
+   * Seeded from defaults.deriveDepositFromSavings — not itself directly
+   * editable in the live form, only via the admin defaults page. */
+  deriveDepositFromSavings: boolean;
 
   showAdvanced: boolean;
   annualOverpaymentAllowancePct: string;
@@ -55,21 +62,25 @@ export interface FormState {
  * /api/v1/defaults response — the single source of truth for every
  * calculation-fallback default (see backend/app/engine/defaults.json).
  * Fields below with no calculation-default equivalent (propertyValue,
- * depositSavings, currentRent, monthlySavings, serviceCharge,
- * fixedMonthlyOverpayment, targetAllowanceUtilizationPct,
- * rateAfterFixedTermMode, isFirstTimeBuyer, showAdvanced) are pure UI
- * demo/convenience values, kept as literals here. `deposit` is the one
- * exception: it's computed here as depositSavings minus SDLT (mirroring
- * App.tsx's `updateDepositDriver`, not `defaults.deposit`), so the initial
- * form already reflects the auto-fill rather than showing the raw backend
- * default until the user first touches property value/savings/FTB status.
+ * currentRent, monthlySavings, serviceCharge, fixedMonthlyOverpayment,
+ * targetAllowanceUtilizationPct, rateAfterFixedTermMode, showAdvanced) are
+ * pure UI demo/convenience values, kept as literals here. `depositSavings`
+ * and `isFirstTimeBuyer` come from `defaults` (admin-editable, see
+ * AdminPage.tsx) rather than being literals here, unlike the fields above.
+ * `deposit` is computed to match: when `defaults.deriveDepositFromSavings`
+ * is true, it's depositSavings minus SDLT (mirroring App.tsx's
+ * `updateDepositDriver`, which keeps applying the same computation live) —
+ * so the initial form already reflects the auto-fill rather than showing
+ * the raw default until the user first touches property value/savings/FTB
+ * status. When false, `deposit` is just `defaults.deposit` as-is.
  */
 export function buildDefaultFormState(defaults: MortgageDefaults): FormState {
   const propertyValue = '450000';
-  const depositSavings = '90000';
-  const isFirstTimeBuyer = true;
-  const sdlt = calculateSdlt(Number(propertyValue), isFirstTimeBuyer);
-  const deposit = Math.max(0, Math.round(Number(depositSavings) - sdlt.totalTax));
+  const depositSavings = String(defaults.depositSavings);
+  const isFirstTimeBuyer = defaults.isFirstTimeBuyer;
+  const deposit = defaults.deriveDepositFromSavings
+    ? Math.max(0, Math.round(defaults.depositSavings - calculateSdlt(Number(propertyValue), isFirstTimeBuyer).totalTax))
+    : defaults.deposit;
 
   return {
     propertyValue,
@@ -97,6 +108,7 @@ export function buildDefaultFormState(defaults: MortgageDefaults): FormState {
     lumpSums: [],
 
     isFirstTimeBuyer,
+    deriveDepositFromSavings: defaults.deriveDepositFromSavings,
 
     showAdvanced: false,
     annualOverpaymentAllowancePct: String(defaults.config.annualOverpaymentAllowancePct),

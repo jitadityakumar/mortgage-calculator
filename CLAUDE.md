@@ -85,10 +85,17 @@ Frontend (React/Vite, src/)          Backend (FastAPI, backend/app/)
   `window.location.pathname` check in `src/main.tsx`, no router dependency), lets a
   local user view/edit every field in `MortgageDefaults` via `PUT /api/v1/defaults`,
   plus a "Reset to shipped defaults" action. No auth (matches this app's single-user,
-  local-only design). Editing `deposit` here only changes the *server-side* fallback
-  for partial `/calculate` requests and saved-calculation resolution — it does **not**
-  change the live calculator's pre-filled deposit, which is computed client-side from
-  `depositSavings − SDLT(...)` in `buildDefaultFormState()`, independent of this row.
+  local-only design).
+  - `deposit`, `depositSavings`, `isFirstTimeBuyer`, and `deriveDepositFromSavings` feed
+    only `buildDefaultFormState()`'s initial pre-fill and (for `deposit`) the
+    server-side fallback for partial `/calculate` requests / saved-calculation
+    resolution — never any engine calculation (SDLT and the deposit auto-fill formula
+    are computed client-side). `deriveDepositFromSavings` also gates App.tsx's *live*
+    auto-fill (`updateDepositDriver`): when true (the shipped default), `deposit`
+    recomputes from `depositSavings − SDLT(...)` on every property value/savings/FTB
+    change, same as before this field existed; when false, `deposit` is a plain
+    user-controlled field that never auto-recomputes, and the flat `deposit` default is
+    what both the initial pre-fill and the server-side fallback use instead.
 - **`src/`** (UI) — `App.tsx` wires a form column to a results column, `async`: it
   debounces (300ms) and calls the backend on every input change, with loading and
   error states. Form state (`src/types/formState.ts`) is all strings, so

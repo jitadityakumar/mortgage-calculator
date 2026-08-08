@@ -112,11 +112,14 @@ function MortgageCalculator({ defaults }: { defaults: MortgageDefaults }) {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  /** Deposit auto-fills as savings minus SDLT whenever savings, property
-   * value, or first-time-buyer status change (the only three fields that
-   * affect the computation) — the user can still type over the deposit
-   * field directly via plain `update`, but that override only lasts until
-   * one of these three changes again. Computed synchronously in the same
+  /** When `deriveDepositFromSavings` is on (the admin-configured default,
+   * see AdminPage.tsx), deposit auto-fills as savings minus SDLT whenever
+   * savings, property value, or first-time-buyer status change (the only
+   * three fields that affect the computation) — the user can still type
+   * over the deposit field directly via plain `update`, but that override
+   * only lasts until one of these three changes again. When it's off,
+   * deposit is a plain user-controlled field and this is a no-op beyond
+   * updating the driving field itself. Computed synchronously in the same
    * setForm call that changes the driving field (rather than in a separate
    * effect keyed on those fields) so there's no dependency on effect
    * scheduling — loading a saved calculation goes through plain `setForm`
@@ -128,6 +131,7 @@ function MortgageCalculator({ defaults }: { defaults: MortgageDefaults }) {
   ) => {
     setForm((prev) => {
       const next = { ...prev, [field]: value };
+      if (!next.deriveDepositFromSavings) return next;
       const sdlt = calculateSdlt(parseNum(next.propertyValue), next.isFirstTimeBuyer);
       const computedDeposit = Math.max(0, Math.round(parseNum(next.depositSavings) - sdlt.totalTax));
       return { ...next, deposit: String(computedDeposit) };
