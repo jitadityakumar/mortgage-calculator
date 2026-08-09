@@ -784,6 +784,58 @@ def test_calculate_echoes_rate_after_fixed_term_mode_in_the_result():
     assert result.rateAfterFixedTermMode == "hybrid"
 
 
+def test_hybrid_lookahead_inherits_the_real_mid_year_allowance_state_instead_of_resetting_fresh():
+    # Regression: an earlier version of _would_clear_within_window_on_variable
+    # reset allowance_used_this_year/auto_target_used_this_year to 0 at the
+    # start of every lookahead, rather than inheriting the boundary month's
+    # real mid-year state — an Opus math-review pass found this could bias
+    # the commit decision in either direction (optimistic when real usage
+    # this year was already high, pessimistic when the allowance basis is
+    # 'outstanding' and the limit itself has since drifted). Directly proves
+    # the carried-in state is what actually drives the 'auto' pacing: with
+    # this year's allowance already almost fully used (auto_target_used_this_year
+    # close to the target), a modest pool can't finish pacing fast enough to
+    # clear within the window; with nothing used yet, it can.
+    from app.engine.mortgage import _would_clear_within_window_on_variable
+    from app.engine.types import MortgageConfig
+
+    config = MortgageConfig(
+        annualOverpaymentAllowancePct=10,
+        allowanceBasis="outstanding",
+        ercRateOnExcessPct=3,
+        ercAppliesDuringFixedTermOnly=True,
+        arrangementFee=0,
+        arrangementFeeAddedToLoan=False,
+    )
+    kwargs = dict(
+        balance_pence=200_000,  # £2,000
+        principal_pence=200_000,
+        savings_pot_pence=0,
+        start_month=2,  # mid-year: month 2 of the allowance year, 10 months left in it
+        remaining_total_term_months=300,
+        window_months=10,
+        variable_monthly_rate=7.25 / 100 / 12,
+        config=config,
+        overpayment_mode="reduceTerm",
+        overpayment_amount_mode="auto",
+        fixed_monthly_overpayment_pence=0,
+        target_utilization_pct=100,
+        monthly_budget_pool_pence=180_000,  # £1,800/month pool, well above the tiny base payment
+        banked_destination="keepAsSavings",
+        savings_payout_interval_months=6,
+        allowance_limit_this_year=250_000,  # £2,500 target for the year
+    )
+
+    clears_when_nothing_used_yet = _would_clear_within_window_on_variable(
+        **kwargs, allowance_used_this_year=0, auto_target_used_this_year=0
+    )
+    clears_when_almost_fully_used_already = _would_clear_within_window_on_variable(
+        **kwargs, allowance_used_this_year=225_000, auto_target_used_this_year=225_000
+    )
+    assert clears_when_nothing_used_yet is True
+    assert clears_when_almost_fully_used_already is False
+
+
 def test_hybrid_commits_via_genuine_overpayment_driven_payoff_not_just_the_forced_final_month_rule():
     # Unlike the totalTermMonths=36 tests above (where remaining_total_term_months
     # ends up <= the fixedTermMonths lookahead window, so the engine's

@@ -53,6 +53,9 @@ def _would_clear_within_window_on_variable(
     monthly_budget_pool_pence: int,
     banked_destination: str,
     savings_payout_interval_months: int,
+    allowance_limit_this_year: int,
+    allowance_used_this_year: int,
+    auto_target_used_this_year: int,
 ) -> bool:
     """'hybrid' mode's boundary check: if the loan switched to the variable
     rate right now and stayed there, would it clear within `window_months`
@@ -63,23 +66,21 @@ def _would_clear_within_window_on_variable(
     calculate_mortgage()'s loop directly, since this only ever needs a
     pass/fail projection, never a real schedule.
 
+    The three allowance_* arguments carry in the real mid-year state as of
+    the boundary month (the caller's own live values) rather than starting
+    fresh — the window begins mid-year from the loan's actual allowance-year
+    alignment, and treating it as a fresh reset would bias the projection
+    (optimistically understating what's already been used, pessimistically
+    if the limit itself has since drifted with the balance) in a direction
+    that depends on the specific inputs, not a single safe-to-ignore one.
+    The loop's own (month - 1) % 12 == 0 reset still fires normally for any
+    later anniversary that falls inside the window.
+
     Known simplification: ignores dated lump-sum overpayments that would
     fall inside the lookahead window (calculate_mortgage()'s real run still
     applies them if hybrid ends up continuing to cycle instead) — an
     acceptable approximation given lump sums are an optional, occasional
     input, and the window is short relative to the loan's life.
-
-    Also treats `start_month` as a fresh allowance-year boundary rather than
-    inheriting the real mid-year allowance-used state, since annual resets
-    happen every 12 months regardless of alignment. This is a one-directional
-    approximation, not a neutral one: resetting allowance_used_this_year to 0
-    can only ever make the projected auto-pacing/payout capacity *larger*
-    than the real continuation would see (real state always has some
-    allowance already consumed), so this check can never be more pessimistic
-    than reality, only more optimistic about committing. It doesn't corrupt
-    the real schedule either way — once committed, the actual loop keeps
-    running variable-forever regardless of how accurate the original
-    projection was — but a "yes" here is a slightly generous yes.
     """
     months_to_check = min(window_months, remaining_total_term_months)
     if months_to_check <= 0:
@@ -88,9 +89,6 @@ def _would_clear_within_window_on_variable(
     balance = balance_pence
     savings_pot = savings_pot_pence
     payment = _calc_monthly_payment_pence(balance, variable_monthly_rate, remaining_total_term_months)
-    allowance_limit_this_year = _compute_allowance_limit_pence(balance, principal_pence, config)
-    allowance_used_this_year = 0
-    auto_target_used_this_year = 0
     # ERC never applies here (config.ercAppliesDuringFixedTermOnly True is
     # the common case, and this window is always variable-rate throughout),
     # unless the config deliberately applies ERC outside the fixed term too.
@@ -333,9 +331,9 @@ def calculate_mortgage(inputs: MortgageInputs, defaults: Optional[MortgageDefaul
             # boundary rather than the (now long past) original fixed term —
             # same shape as stayOnVariable's formula, immediate first payout
             # right after committing, then every interval after that.
+            # hybrid_committed already guarantees month > hybrid_committed_at_month.
             is_savings_payout_month = banked_destination == "lumpSumEachCycle" and (
-                month > hybrid_committed_at_month
-                and (month - hybrid_committed_at_month - 1) % savings_payout_interval_months == 0
+                (month - hybrid_committed_at_month - 1) % savings_payout_interval_months == 0
             )
         else:
             is_savings_payout_month = banked_destination == "lumpSumEachCycle" and (
@@ -412,6 +410,9 @@ def calculate_mortgage(inputs: MortgageInputs, defaults: Optional[MortgageDefaul
                 monthly_budget_pool_pence=monthly_budget_pool_pence,
                 banked_destination=banked_destination,
                 savings_payout_interval_months=savings_payout_interval_months,
+                allowance_limit_this_year=allowance_limit_this_year,
+                allowance_used_this_year=allowance_used_this_year,
+                auto_target_used_this_year=auto_target_used_this_year,
             )
             if would_clear:
                 hybrid_committed_at_month = month
