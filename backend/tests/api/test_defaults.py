@@ -50,6 +50,7 @@ def test_get_defaults_on_fresh_db_returns_shipped_values(client: TestClient) -> 
     assert body["currentRent"] == SEED.currentRent
     assert body["monthlySavings"] == SEED.monthlySavings
     assert body["serviceCharge"] == SEED.serviceCharge
+    assert body["rateAfterFixedTermMode"] == SEED.rateAfterFixedTermMode
 
 
 def test_put_defaults_persists_and_is_reflected_by_later_get(client: TestClient) -> None:
@@ -114,6 +115,31 @@ def test_put_defaults_changes_what_partial_calculate_resolves_to_for_the_rent_sa
     assert body["schedule"][0]["savingsAddedThisMonth"] == pytest.approx(
         1400 - body["schedule"][0]["scheduledPayment"], abs=0.5
     )
+
+
+def test_put_defaults_changes_what_partial_calculate_resolves_to_for_rate_after_fixed_term(
+    client: TestClient,
+) -> None:
+    updated = {
+        **SEED.model_dump(exclude={"updatedAt"}),
+        "rateAfterFixedTermMode": "stayOnVariable",
+        "monthlyOverpaymentAmountMode": "none",
+        "currentRent": 0,
+        "monthlySavings": 0,
+        "serviceCharge": 0,
+    }
+    client.put("/api/v1/defaults", json=updated)
+
+    response = client.post("/api/v1/calculate", json={"propertyValue": 250_000})
+    assert response.status_code == 200
+    body = response.json()
+    # Shortly after the fixed term + remortgage gap ends, the shipped
+    # remortgageToNewFixed default would cycle back to the fixed rate —
+    # stayOnVariable keeps the variable rate applied instead, proving the
+    # admin-set default (not the seed) flowed into the engine.
+    post_gap_month = int(SEED.fixedTermMonths + SEED.remortgageGapMonths + 1)
+    entry = next(e for e in body["schedule"] if e["month"] == post_gap_month)
+    assert entry["ratePct"] == SEED.variableRateAnnualPct
 
 
 def test_put_defaults_changes_what_saved_calculation_resolves_to(client: TestClient) -> None:

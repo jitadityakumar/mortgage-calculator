@@ -97,6 +97,8 @@ export function mapInputsToFormState(
     // 0 would be an invalid value here (validate_inputs rejects <= 0), not a
     // no-op, so fall back to the engine's real default instead.
     savingsPayoutIntervalMonths: String(inputs.savingsPayoutIntervalMonths ?? defaults.savingsPayoutIntervalMonths),
+    // Falls back to currentForm, like the other mode/enum fields above, not
+    // defaults.rateAfterFixedTermMode.
     rateAfterFixedTermMode: inputs.rateAfterFixedTermMode ?? currentForm.rateAfterFixedTermMode,
     remortgageGapMonths: String(inputs.remortgageGapMonths ?? defaults.remortgageGapMonths),
 

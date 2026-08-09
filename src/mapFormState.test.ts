@@ -30,6 +30,7 @@ const TEST_DEFAULTS: MortgageDefaults = {
   fixedMonthlyOverpayment: 300,
   targetAllowanceUtilizationPct: 50,
   bankedSavingsDestination: 'lumpSumEachCycle',
+  rateAfterFixedTermMode: 'remortgageToNewFixed',
   updatedAt: null,
 };
 

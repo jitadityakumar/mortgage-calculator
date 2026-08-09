@@ -24,5 +24,6 @@
   "monthlyOverpaymentAmountMode": "auto",
   "fixedMonthlyOverpayment": 300,
   "targetAllowanceUtilizationPct": 50,
-  "bankedSavingsDestination": "lumpSumEachCycle"
+  "bankedSavingsDestination": "lumpSumEachCycle",
+  "rateAfterFixedTermMode": "remortgageToNewFixed"
 }

@@ -101,7 +101,12 @@ def test_calculate_with_property_value_and_deposit_only_uses_defaults_for_rest()
     assert response.status_code == 200
     body = response.json()
     assert body["principal"] == 200_000
-    assert len(body["schedule"]) == 67
+    # rateAfterFixedTermMode now defaults to remortgageToNewFixed (was
+    # implicitly stayOnVariable before this field existed) — the loan cycles
+    # back into a new fixed deal after the fixed term + remortgage gap instead
+    # of paying off shortly after moving to the variable rate, extending the
+    # payoff schedule (was 67 months).
+    assert len(body["schedule"]) == 123
 
 
 def test_get_defaults_returns_the_shared_default_values() -> None:

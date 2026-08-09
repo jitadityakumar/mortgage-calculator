@@ -158,6 +158,20 @@ describe('AdminPage', () => {
     expect(getInputForLabel('Service charge').value).toBe('250');
   });
 
+  it('edits "once the fixed deal ends" and saves', async () => {
+    const user = userEvent.setup();
+    await renderAdminPage();
+
+    const select = screen.getByLabelText('Once the fixed deal ends') as HTMLSelectElement;
+    expect(select.value).toBe('remortgageToNewFixed');
+
+    await user.selectOptions(select, 'stayOnVariable');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await screen.findByText('Saved.');
+    expect((screen.getByLabelText('Once the fixed deal ends') as HTMLSelectElement).value).toBe('stayOnVariable');
+  });
+
   it('does not reset when the confirmation is declined', async () => {
     const user = userEvent.setup();
     await renderAdminPage();

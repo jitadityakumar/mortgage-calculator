@@ -62,8 +62,7 @@ export interface FormState {
  * /api/v1/defaults response — the single source of truth for every
  * calculation-fallback default (see backend/app/engine/defaults.json).
  * Fields below with no calculation-default equivalent (propertyValue,
- * rateAfterFixedTermMode, showAdvanced) are pure UI demo/convenience values,
- * kept as literals here.
+ * showAdvanced) are pure UI demo/convenience values, kept as literals here.
  * `depositSavings`
  * and `isFirstTimeBuyer` come from `defaults` (admin-editable, see
  * AdminPage.tsx) rather than being literals here, unlike the fields above.
@@ -102,7 +101,7 @@ export function buildDefaultFormState(defaults: MortgageDefaults): FormState {
 
     bankedSavingsDestination: defaults.bankedSavingsDestination,
     savingsPayoutIntervalMonths: String(defaults.savingsPayoutIntervalMonths),
-    rateAfterFixedTermMode: 'remortgageToNewFixed',
+    rateAfterFixedTermMode: defaults.rateAfterFixedTermMode,
     remortgageGapMonths: String(defaults.remortgageGapMonths),
 
     lumpSums: [],

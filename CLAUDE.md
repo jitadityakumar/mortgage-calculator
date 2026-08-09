@@ -122,15 +122,19 @@ Frontend (React/Vite, src/)          Backend (FastAPI, backend/app/)
   mode *cannot* hold the term exactly fixed — any recurring overpayment mathematically
   must finish somewhat early. This is intentional; don't try to "fix" it to land
   exactly on the original term.
-- **Engine-level defaults are conservative; the app's own form defaults are more
-  opinionated.** e.g. the engine defaults `bankedSavingsDestination` to
-  `'keepAsSavings'` and `rateAfterFixedTermMode` to `'stayOnVariable'` when a field is
-  omitted, but `DEFAULT_FORM_STATE` in `types/formState.ts` explicitly opts into
-  `'lumpSumEachCycle'` / `'remortgageToNewFixed'` since it also seeds nonzero
-  rent/savings. If you add a new optional `MortgageInputs` field, follow this pattern
-  **on both sides** (`backend/app/engine/mortgage.py` and `src/types/formState.ts`) —
-  and if you add it to `mapInputsToFormState`'s fallback, use the real engine default,
-  not `0`, unless `0` is genuinely the no-op value for that field.
+- **Every optional `MortgageInputs` field's fallback is a real, admin-editable
+  `MortgageDefaults` field** (`backend/app/engine/defaults.json`, admin-editable via
+  `PUT /api/v1/defaults`) — including `bankedSavingsDestination` (shipped default
+  `'lumpSumEachCycle'`) and `rateAfterFixedTermMode` (shipped default
+  `'remortgageToNewFixed'`). There's no separate "conservative engine fallback vs
+  opinionated FE literal" split anymore; both the FE's initial pre-fill
+  (`buildDefaultFormState` in `types/formState.ts`) and the backend's
+  `resolve_mortgage_inputs()` read the same shared default. If you add a new optional
+  `MortgageInputs` field, follow this pattern: add it to `MortgageDefaults`
+  (`types.py`/`types.ts`/`defaults.json`), wire it into `resolve_mortgage_inputs()`,
+  and read it from `defaults` in `buildDefaultFormState()` — and if you add it to
+  `mapInputsToFormState`'s fallback, use the real engine default, not `0`, unless `0`
+  is genuinely the no-op value for that field.
 - **Rate-after-fixed-term and savings-destination are independent toggles.** Don't
   couple them back together — that was tried, caused a real regression (periodic
   lump-sum payouts silently stopped firing under `stayOnVariable`), and was

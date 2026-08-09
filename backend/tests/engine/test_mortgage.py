@@ -40,6 +40,12 @@ def base_inputs(overrides: dict | None = None) -> MortgageInputs:
         "currentRent": 0,
         "monthlySavings": 0,
         "serviceCharge": 0,
+        # Explicit stayOnVariable: rateAfterFixedTermMode now resolves from the
+        # admin-editable defaults (shipped default: remortgageToNewFixed) when
+        # unset, which would otherwise remortgage-cycle every "plain loan" test
+        # below instead of running the simple fixed -> follow-on-forever
+        # schedule they assume. Tests that want cycling override this explicitly.
+        "rateAfterFixedTermMode": "stayOnVariable",
     }
     if overrides:
         data.update(overrides)
@@ -93,7 +99,7 @@ def test_special_cases_a_0_pct_interest_rate_instead_of_dividing_by_zero():
 
 
 def test_recasts_the_payment_at_the_fixed_variable_boundary_using_the_actual_remaining_balance():
-    # rateAfterFixedTermMode defaults to 'stayOnVariable' at the engine level, so
+    # base_inputs() sets rateAfterFixedTermMode explicitly to stayOnVariable, so
     # this is the simple single fixed -> follow-on-forever schedule.
     inputs = base_inputs({"fixedTermMonths": 60, "variableRateAnnualPct": 7.25})
     result = calculate_mortgage(inputs)

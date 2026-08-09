@@ -80,7 +80,7 @@ def calculate_mortgage(inputs: MortgageInputs, defaults: Optional[MortgageDefaul
         pounds_to_pence(inputs.currentRent + inputs.monthlySavings - inputs.serviceCharge),
     )
 
-    rate_after_fixed_term_mode = inputs.rateAfterFixedTermMode or "stayOnVariable"
+    rate_after_fixed_term_mode = inputs.rateAfterFixedTermMode
     cycling_active = (
         rate_after_fixed_term_mode == "remortgageToNewFixed"
         and fixed_term_months > 0

@@ -128,6 +128,8 @@ def resolve_mortgage_inputs(
         updates["targetAllowanceUtilizationPct"] = d.targetAllowanceUtilizationPct
     if inputs.bankedSavingsDestination is None:
         updates["bankedSavingsDestination"] = d.bankedSavingsDestination
+    if inputs.rateAfterFixedTermMode is None:
+        updates["rateAfterFixedTermMode"] = d.rateAfterFixedTermMode
     if not updates:
         return inputs
     return inputs.model_copy(update=updates)

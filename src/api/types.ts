@@ -142,6 +142,7 @@ export interface MortgageDefaults {
   fixedMonthlyOverpayment: number;
   targetAllowanceUtilizationPct: number;
   bankedSavingsDestination: BankedSavingsDestination;
+  rateAfterFixedTermMode: RateAfterFixedTermMode;
   /** ISO timestamp of the last admin edit; null when serving the shipped
    * defaults.json values (never persisted/edited). */
   updatedAt: string | null;

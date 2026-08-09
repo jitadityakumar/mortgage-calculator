@@ -6,6 +6,7 @@ import type {
   MonthlyOverpaymentAmountMode,
   MortgageDefaults,
   OverpaymentMode,
+  RateAfterFixedTermMode,
 } from '../api/types';
 import { parseNum } from '../format';
 import { NumberField } from './NumberField';
@@ -34,6 +35,7 @@ interface DefaultsFormState {
   fixedMonthlyOverpayment: string;
   targetAllowanceUtilizationPct: string;
   bankedSavingsDestination: BankedSavingsDestination;
+  rateAfterFixedTermMode: RateAfterFixedTermMode;
   annualOverpaymentAllowancePct: string;
   allowanceBasis: AllowanceBasis;
   ercRateOnExcessPct: string;
@@ -62,6 +64,7 @@ function toFormState(d: MortgageDefaults): DefaultsFormState {
     fixedMonthlyOverpayment: String(d.fixedMonthlyOverpayment),
     targetAllowanceUtilizationPct: String(d.targetAllowanceUtilizationPct),
     bankedSavingsDestination: d.bankedSavingsDestination,
+    rateAfterFixedTermMode: d.rateAfterFixedTermMode,
     annualOverpaymentAllowancePct: String(d.config.annualOverpaymentAllowancePct),
     allowanceBasis: d.config.allowanceBasis,
     ercRateOnExcessPct: String(d.config.ercRateOnExcessPct),
@@ -91,6 +94,7 @@ function toMortgageDefaults(form: DefaultsFormState): MortgageDefaults {
     fixedMonthlyOverpayment: parseNum(form.fixedMonthlyOverpayment),
     targetAllowanceUtilizationPct: parseNum(form.targetAllowanceUtilizationPct),
     bankedSavingsDestination: form.bankedSavingsDestination,
+    rateAfterFixedTermMode: form.rateAfterFixedTermMode,
     config: {
       annualOverpaymentAllowancePct: parseNum(form.annualOverpaymentAllowancePct),
       allowanceBasis: form.allowanceBasis,
@@ -347,6 +351,16 @@ export function AdminPage() {
           <fieldset className="card">
             <legend>Post fixed deal</legend>
             <div className="field-grid">
+              <label className="field">
+                <span className="field-label">Once the fixed deal ends</span>
+                <select
+                  value={form.rateAfterFixedTermMode}
+                  onChange={(e) => update('rateAfterFixedTermMode', e.target.value as RateAfterFixedTermMode)}
+                >
+                  <option value="remortgageToNewFixed">Remortgage into a new fixed deal</option>
+                  <option value="stayOnVariable">Move onto the variable rate and stay there</option>
+                </select>
+              </label>
               <label className="field">
                 <span className="field-label">Banked savings destination</span>
                 <select

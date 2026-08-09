@@ -74,6 +74,7 @@ class MortgageDefaults(BaseModel):
     fixedMonthlyOverpayment: float
     targetAllowanceUtilizationPct: float
     bankedSavingsDestination: BankedSavingsDestination
+    rateAfterFixedTermMode: RateAfterFixedTermMode
     # None when loaded from defaults.json (load_seed_defaults()) rather than
     # the DB — the seed file itself was never "updated".
     updatedAt: Optional[str] = None
