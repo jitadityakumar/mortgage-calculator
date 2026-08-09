@@ -105,6 +105,16 @@ def test_special_cases_a_0_pct_interest_rate_instead_of_dividing_by_zero():
     assert result.schedule[-1].closingBalance == 0
 
 
+def test_total_paid_is_property_value_plus_sdlt_plus_total_interest():
+    # propertyValue 250_000 with the seed's isFirstTimeBuyer setting, same
+    # SDLT reference calc DERIVED_DEPOSIT_250K above already relies on.
+    inputs = base_inputs({"propertyValue": 250_000, "deposit": 50_000})
+    result = calculate_mortgage(inputs)
+    sdlt = calculate_sdlt(250_000, _SEED.isFirstTimeBuyer)
+    expected_total_paid = 250_000 + sdlt.totalTax + result.totalInterestPaid
+    assert result.totalPaid == pytest.approx(expected_total_paid, abs=0.01)
+
+
 # calculateMortgage — fixed to variable rate transition (no cycling)
 
 
