@@ -138,10 +138,17 @@ Frontend (React/Vite, src/)          Backend (FastAPI, backend/app/)
 - **Rate-after-fixed-term and savings-destination are independent toggles.** Don't
   couple them back together — that was tried, caused a real regression (periodic
   lump-sum payouts silently stopped firing under `stayOnVariable`), and was
-  deliberately un-coupled. Payout *timing* differs by mode: `remortgageToNewFixed`
-  pays out the month immediately after every fixed-deal boundary;
-  `stayOnVariable` pays out periodically every `savingsPayoutIntervalMonths` (a
-  whole number of months), first payout when the initial fixed term ends.
+  deliberately un-coupled. `rateAfterFixedTermMode` has three values:
+  `remortgageToNewFixed`, `stayOnVariable`, and `hybrid`. Payout *timing* differs by
+  mode: `remortgageToNewFixed` pays out the month immediately after every
+  fixed-deal boundary; `stayOnVariable` pays out periodically every
+  `savingsPayoutIntervalMonths` (a whole number of months), first payout when the
+  initial fixed term ends; `hybrid` cycles fixed deals exactly like
+  `remortgageToNewFixed` until, at a fixed-deal boundary, a lookahead shows staying
+  on the variable rate from there would clear the loan within one more fixed
+  deal's duration — at which point it commits to variable permanently and switches
+  to `stayOnVariable`'s periodic payout schedule (immediate first payout the month
+  of commit, then every `savingsPayoutIntervalMonths` after).
 - **Money conservation is a real invariant, tested explicitly**: pool money freed up
   each month must always equal `totalOverpaid + unallocatedSavingsPot` — nothing
   should vanish, including at loop-exit edge cases like an overshoot on the payoff

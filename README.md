@@ -19,9 +19,12 @@ exposed beyond localhost/your tailnet.
   and either "reduce term" or "reduce payment" mode.
 - Models a rent + savings pool: money freed up by not renting, plus existing savings, minus
   a recurring service charge/ground rent, can fund overpayments automatically.
-- Remortgage cycling: simulate repeatedly rolling onto a new fixed-rate deal (with a gap on
-  the variable rate in between) versus staying on the variable rate for good, each with
-  matching timing for when banked savings pay out as lump sums.
+- Once-the-fixed-deal-ends modeling, three modes: repeatedly remortgage onto a new
+  fixed-rate deal (with a penalty-free gap on the variable rate in between), stay on the
+  variable rate for good, or a hybrid that cycles fixed deals until a lookahead shows
+  staying on variable from the next boundary would clear the loan within one more fixed
+  deal's duration — then commits to variable permanently. Banked-savings payout timing
+  matches whichever mode is active.
 - Configurable lender assumptions: penalty-free overpayment allowance %, Early Repayment
   Charge (ERC) rate, arrangement fee (upfront or added to the loan).
 - Full month-by-month amortization schedule and a balance-over-time chart, comparing with
@@ -29,6 +32,9 @@ exposed beyond localhost/your tailnet.
 - SDLT (Stamp Duty) calculator, including first-time-buyer relief.
 - **Save and reload named calculations** — inputs only (not cached results), so a reload
   always reflects the current lender-assumption defaults rather than showing stale numbers.
+- **Admin page** (`/admin`) — view and edit every shared default (rates, term, overpayment
+  behavior, allowance/ERC assumptions, etc.) that the calculator pre-fills from, with a
+  one-click reset back to the shipped defaults.
 
 ## Getting started
 
@@ -39,6 +45,7 @@ docker compose up --build
 ```
 
 - App: http://localhost:8090
+- Admin page (shared defaults): http://localhost:8090/admin
 - API + interactive docs: http://localhost:8000/docs
 
 Saved calculations persist in a named Docker volume across restarts and rebuilds.
