@@ -34,6 +34,7 @@ export function OverpaymentsForm({ form, update, initialMonthlyPayment }: Overpa
   const poolInUse = form.monthlyOverpaymentAmountMode !== 'none' || form.bankedSavingsDestination === 'lumpSumEachCycle';
 
   return (
+    <>
     <fieldset className="card">
       <legend>Overpayments</legend>
 
@@ -129,6 +130,67 @@ export function OverpaymentsForm({ form, update, initialMonthlyPayment }: Overpa
         />
       )}
 
+      {poolInUse && initialMonthlyPayment !== undefined && freedThisMonth !== undefined && (
+        <p className="field-hint">
+          Your first mortgage payment is {formatGBP(initialMonthlyPayment, true)}, leaving about{' '}
+          <strong>{formatGBP(freedThisMonth, true)}/month</strong> free from your{' '}
+          {formatGBP(rentSavingsPool, true)} rent + savings pool (after service charge) — this grows as your
+          payment falls over time.
+        </p>
+      )}
+      {poolInUse && (
+        <p className="field-hint warning">
+          Maximizing overpayments every month means less cash on hand for emergencies. Consider keeping an
+          emergency fund (roughly 3–6 months of expenses) in accessible cash first, and compare against other
+          savings/investment options — overpaid amounts aren't easily accessible again without further borrowing.
+        </p>
+      )}
+
+      <div className="lump-sums">
+        <div className="lump-sums-header">
+          <span className="field-label">One-off lump sum overpayments</span>
+          <button type="button" className="btn-secondary" onClick={() => update('lumpSums', [...form.lumpSums, newLumpSumRow()])}>
+            + Add lump sum
+          </button>
+        </div>
+        {form.lumpSums.length === 0 && <p className="field-hint">None added.</p>}
+        {form.lumpSums.map((row) => (
+          <div className="lump-sum-row" key={row.id}>
+            <label className="field field-inline">
+              <span className="field-label">Month #</span>
+              <input
+                type="number"
+                min="1"
+                value={row.month}
+                onChange={(e) => updateLumpSum(row.id, { month: e.target.value })}
+                placeholder="e.g. 12"
+              />
+            </label>
+            <label className="field field-inline">
+              <span className="field-label">Amount</span>
+              <div className="field-input">
+                <span className="field-affix">£</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="100"
+                  value={row.amount}
+                  onChange={(e) => updateLumpSum(row.id, { amount: e.target.value })}
+                  placeholder="e.g. 5000"
+                />
+              </div>
+            </label>
+            <button type="button" className="btn-remove" onClick={() => removeLumpSum(row.id)} aria-label="Remove lump sum">
+              ✕
+            </button>
+          </div>
+        ))}
+      </div>
+    </fieldset>
+
+    <fieldset className="card">
+      <legend>Post fixed deal</legend>
+
       <div className="radio-group">
         <span className="field-label">Once the fixed deal ends</span>
         <label className="radio-field">
@@ -210,63 +272,7 @@ export function OverpaymentsForm({ form, update, initialMonthlyPayment }: Overpa
           </p>
         </>
       )}
-
-      {poolInUse && initialMonthlyPayment !== undefined && freedThisMonth !== undefined && (
-        <p className="field-hint">
-          Your first mortgage payment is {formatGBP(initialMonthlyPayment, true)}, leaving about{' '}
-          <strong>{formatGBP(freedThisMonth, true)}/month</strong> free from your{' '}
-          {formatGBP(rentSavingsPool, true)} rent + savings pool (after service charge) — this grows as your
-          payment falls over time.
-        </p>
-      )}
-      {poolInUse && (
-        <p className="field-hint warning">
-          Maximizing overpayments every month means less cash on hand for emergencies. Consider keeping an
-          emergency fund (roughly 3–6 months of expenses) in accessible cash first, and compare against other
-          savings/investment options — overpaid amounts aren't easily accessible again without further borrowing.
-        </p>
-      )}
-
-      <div className="lump-sums">
-        <div className="lump-sums-header">
-          <span className="field-label">One-off lump sum overpayments</span>
-          <button type="button" className="btn-secondary" onClick={() => update('lumpSums', [...form.lumpSums, newLumpSumRow()])}>
-            + Add lump sum
-          </button>
-        </div>
-        {form.lumpSums.length === 0 && <p className="field-hint">None added.</p>}
-        {form.lumpSums.map((row) => (
-          <div className="lump-sum-row" key={row.id}>
-            <label className="field field-inline">
-              <span className="field-label">Month #</span>
-              <input
-                type="number"
-                min="1"
-                value={row.month}
-                onChange={(e) => updateLumpSum(row.id, { month: e.target.value })}
-                placeholder="e.g. 12"
-              />
-            </label>
-            <label className="field field-inline">
-              <span className="field-label">Amount</span>
-              <div className="field-input">
-                <span className="field-affix">£</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="100"
-                  value={row.amount}
-                  onChange={(e) => updateLumpSum(row.id, { amount: e.target.value })}
-                  placeholder="e.g. 5000"
-                />
-              </div>
-            </label>
-            <button type="button" className="btn-remove" onClick={() => removeLumpSum(row.id)} aria-label="Remove lump sum">
-              ✕
-            </button>
-          </div>
-        ))}
-      </div>
     </fieldset>
+    </>
   );
 }
