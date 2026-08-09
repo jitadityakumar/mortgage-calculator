@@ -55,14 +55,14 @@ class MortgageDefaults(BaseModel):
     fixedTermMonths: float
     totalTermMonths: float
     deposit: float
-    # These three feed only the frontend's initial pre-fill (buildDefaultFormState
-    # in src/types/formState.ts) — not resolve_mortgage_inputs() or any engine
-    # calculation, since "derive deposit from savings" is a client-side UX
-    # convenience (SDLT is computed client-side), not a server-side calculation
-    # concern. depositSavings/isFirstTimeBuyer are the values the calculator
-    # starts with; deriveDepositFromSavings controls whether `deposit` above is
-    # shown as-is or replaced by depositSavings minus SDLT, both on first load
-    # and on every subsequent property value/savings/FTB change.
+    # depositSavings/isFirstTimeBuyer/deriveDepositFromSavings feed the frontend's
+    # initial pre-fill (buildDefaultFormState in src/types/formState.ts) *and*
+    # resolve_mortgage_inputs(): when deriveDepositFromSavings is true and a caller
+    # omits `deposit` (e.g. a partial /calculate with only propertyValue), the
+    # server derives it as depositSavings minus SDLT(propertyValue,
+    # isFirstTimeBuyer) via the engine's own sdlt.py, mirroring the frontend's
+    # updateDepositDriver() formula exactly — when false, `deposit` above is used
+    # as a flat fallback instead, same as before.
     depositSavings: float
     isFirstTimeBuyer: bool
     deriveDepositFromSavings: bool

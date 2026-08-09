@@ -5,12 +5,18 @@ import pytest
 from app.engine import (
     MortgageValidationError,
     calculate_mortgage,
+    calculate_sdlt,
     compare_with_and_without_overpayments,
     load_seed_defaults,
 )
 from app.engine.types import MortgageInputs
 
-DEFAULT_DEPOSIT = load_seed_defaults().deposit
+_SEED = load_seed_defaults()
+DEFAULT_DEPOSIT = _SEED.deposit
+# deriveDepositFromSavings is on in the seed, so a request that omits
+# `deposit` actually resolves via depositSavings minus SDLT — see
+# resolve_mortgage_inputs().
+DERIVED_DEPOSIT_250K = max(0, round(_SEED.depositSavings - calculate_sdlt(250_000, _SEED.isFirstTimeBuyer).totalTax))
 
 
 def reference_monthly_payment(principal: float, annual_pct: float, months: int) -> float:
@@ -874,9 +880,10 @@ def test_a_zero_month_gap_means_never_leaving_the_fixed_tie_in_so_payouts_stay_a
 
 def test_calculate_fills_in_defaults_when_only_property_value_is_given():
     result = calculate_mortgage(MortgageInputs(propertyValue=250_000))
-    # Flat default deposit (DEFAULT_DEPOSIT, from defaults.json) -> principal
-    # is propertyValue minus that flat amount, not a percentage.
-    assert result.principal == 250_000 - DEFAULT_DEPOSIT
+    # deriveDepositFromSavings is on by default, so deposit resolves to
+    # depositSavings minus SDLT (not the flat `deposit` default) — see
+    # resolve_mortgage_inputs().
+    assert result.principal == 250_000 - DERIVED_DEPOSIT_250K
     # Every other field defaults too, including the rent+savings pool and
     # 'auto' overpayment mode — real overpayments pay this off well before
     # the default 300-month term.
@@ -891,7 +898,29 @@ def test_calculate_only_fills_defaults_for_fields_left_unset():
     assert explicit.principal == 200_000
     # Caller-supplied fields are untouched by default-filling.
     assert explicit.schedule[0].ratePct == 5
-    assert defaulted_deposit.principal == 250_000 - DEFAULT_DEPOSIT
+    assert defaulted_deposit.principal == 250_000 - DERIVED_DEPOSIT_250K
+
+
+def test_calculate_uses_flat_deposit_default_when_derive_from_savings_is_off():
+    defaults = _SEED.model_copy(update={"deriveDepositFromSavings": False})
+    result = calculate_mortgage(MortgageInputs(propertyValue=250_000), defaults=defaults)
+    assert result.principal == 250_000 - DEFAULT_DEPOSIT
+
+
+def test_calculate_derives_deposit_with_a_nonzero_sdlt_deduction():
+    # £600,000 is above the £500k FTB-relief ceiling, so standard (non-FTB)
+    # bands apply in full: 0% to £125k, 2% to £250k, 5% to £600k =
+    # 0 + 2,500 + 17,500 = £20,000 — a real, nonzero deduction, unlike the
+    # £250,000/FTB case used elsewhere in this file (SDLT = £0 there, which
+    # can't distinguish "subtracted correctly" from "subtraction dropped
+    # entirely").
+    property_value = 600_000
+    sdlt = calculate_sdlt(property_value, _SEED.isFirstTimeBuyer)
+    assert sdlt.totalTax == 20_000
+    expected_deposit = _SEED.depositSavings - sdlt.totalTax
+
+    result = calculate_mortgage(MortgageInputs(propertyValue=property_value))
+    assert result.principal == property_value - expected_deposit
 
 
 def test_calculate_with_all_fields_given_ignores_defaults_entirely():

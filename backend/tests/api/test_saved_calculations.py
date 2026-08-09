@@ -8,10 +8,15 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.db.session import Base, get_db
-from app.engine import load_seed_defaults
+from app.engine import calculate_sdlt, load_seed_defaults
 from app.main import app
 
-DEFAULT_DEPOSIT = load_seed_defaults().deposit
+_SEED = load_seed_defaults()
+DEFAULT_DEPOSIT = _SEED.deposit
+# deriveDepositFromSavings is on in the seed, so a request that omits
+# `deposit` actually resolves via depositSavings minus SDLT — see
+# resolve_mortgage_inputs().
+DERIVED_DEPOSIT_250K = max(0, round(_SEED.depositSavings - calculate_sdlt(250_000, _SEED.isFirstTimeBuyer).totalTax))
 
 SAMPLE_INPUTS = {
     "propertyValue": 250_000,
@@ -132,7 +137,7 @@ def test_create_with_only_property_value_resolves_defaults_before_storing(client
     # nulls (which would otherwise crash summary serialization and any
     # later list call — see issue #5), not the exact default values
     # themselves (covered in test_mortgage.py / test_api.py).
-    assert body["deposit"] == DEFAULT_DEPOSIT
+    assert body["deposit"] == DERIVED_DEPOSIT_250K
     assert body["totalTermMonths"] == 300
 
     listing = client.get("/api/v1/saved-calculations")

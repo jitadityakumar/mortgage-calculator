@@ -7,6 +7,8 @@ from typing import Optional
 
 from sqlalchemy.orm import Session
 
+from .money import js_round
+from .sdlt import calculate_sdlt
 from .types import MortgageConfig, MortgageConfigOverrides, MortgageDefaults, MortgageInputs, MortgageValidationError
 from .validate import validate_defaults
 
@@ -99,11 +101,23 @@ def resolve_mortgage_inputs(
     """Fills in every field with a value from `defaults` (falling back to
     the shipped defaults.json when not given) that was left unset (None), so
     a caller who only knows propertyValue can still get a usable estimate.
-    Fields the caller did supply are left untouched."""
+    Fields the caller did supply are left untouched. `deposit` is a special
+    case: when `defaults.deriveDepositFromSavings` is on, it's derived as
+    depositSavings minus SDLT(propertyValue, isFirstTimeBuyer) instead of
+    using the flat `defaults.deposit` fallback — mirrors the frontend's
+    updateDepositDriver()."""
     d = defaults or load_seed_defaults()
     updates: dict[str, object] = {}
     if inputs.deposit is None:
-        updates["deposit"] = d.deposit
+        if d.deriveDepositFromSavings:
+            # Mirrors the frontend's updateDepositDriver()/buildDefaultFormState()
+            # formula exactly (src/App.tsx, src/types/formState.ts), so a caller
+            # who only supplies propertyValue gets the same deposit the calculator
+            # would have pre-filled, not the flat `deposit` default underneath it.
+            sdlt = calculate_sdlt(inputs.propertyValue, d.isFirstTimeBuyer)
+            updates["deposit"] = max(0, js_round(d.depositSavings - sdlt.totalTax))
+        else:
+            updates["deposit"] = d.deposit
     if inputs.fixedRateAnnualPct is None:
         updates["fixedRateAnnualPct"] = d.fixedRateAnnualPct
     if inputs.fixedTermMonths is None:

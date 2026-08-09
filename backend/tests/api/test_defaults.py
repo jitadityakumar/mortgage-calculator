@@ -65,12 +65,30 @@ def test_put_defaults_persists_and_is_reflected_by_later_get(client: TestClient)
 
 
 def test_put_defaults_changes_what_partial_calculate_resolves_to(client: TestClient) -> None:
-    updated = {**SEED.model_dump(exclude={"updatedAt"}), "deposit": 12345}
+    # deriveDepositFromSavings=false so the flat `deposit` default (not
+    # depositSavings minus SDLT) is what a partial /calculate resolves to.
+    updated = {**SEED.model_dump(exclude={"updatedAt"}), "deposit": 12345, "deriveDepositFromSavings": False}
     client.put("/api/v1/defaults", json=updated)
 
     response = client.post("/api/v1/calculate", json={"propertyValue": 250_000})
     assert response.status_code == 200
     assert response.json()["principal"] == 250_000 - 12345
+
+
+def test_put_defaults_changes_what_partial_calculate_resolves_to_via_derived_deposit(
+    client: TestClient,
+) -> None:
+    # deriveDepositFromSavings stays on (the seed default) — editing
+    # depositSavings should move what a partial /calculate resolves deposit
+    # to, proving the SDLT-derivation path (not just the flat `deposit`
+    # fallback) reads the live admin-edited defaults.
+    updated = {**SEED.model_dump(exclude={"updatedAt"}), "depositSavings": 120_000}
+    client.put("/api/v1/defaults", json=updated)
+
+    response = client.post("/api/v1/calculate", json={"propertyValue": 250_000})
+    assert response.status_code == 200
+    # SDLT for an FTB at £250,000 is £0 (under the £300k zero-rate threshold).
+    assert response.json()["principal"] == 250_000 - 120_000
 
 
 def test_put_defaults_changes_what_partial_calculate_resolves_to_for_fixed_overpayment(
@@ -143,7 +161,9 @@ def test_put_defaults_changes_what_partial_calculate_resolves_to_for_rate_after_
 
 
 def test_put_defaults_changes_what_saved_calculation_resolves_to(client: TestClient) -> None:
-    updated = {**SEED.model_dump(exclude={"updatedAt"}), "deposit": 54321}
+    # deriveDepositFromSavings=false so the flat `deposit` default (not
+    # depositSavings minus SDLT) is what a partial save resolves to.
+    updated = {**SEED.model_dump(exclude={"updatedAt"}), "deposit": 54321, "deriveDepositFromSavings": False}
     client.put("/api/v1/defaults", json=updated)
 
     response = client.post(

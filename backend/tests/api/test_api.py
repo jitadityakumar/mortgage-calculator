@@ -1,10 +1,15 @@
 from fastapi.testclient import TestClient
 
-from app.engine import load_seed_defaults
+from app.engine import calculate_sdlt, load_seed_defaults
 from app.main import app
 
 client = TestClient(app)
-DEFAULT_DEPOSIT = load_seed_defaults().deposit
+_SEED = load_seed_defaults()
+DEFAULT_DEPOSIT = _SEED.deposit
+# The seed ships deriveDepositFromSavings=true, so a request that omits
+# `deposit` actually resolves via depositSavings minus SDLT, not the flat
+# DEFAULT_DEPOSIT above — see resolve_mortgage_inputs().
+DERIVED_DEPOSIT_250K = max(0, round(_SEED.depositSavings - calculate_sdlt(250_000, _SEED.isFirstTimeBuyer).totalTax))
 
 
 def test_health() -> None:
@@ -81,15 +86,18 @@ def test_compare_with_only_property_value_uses_defaults() -> None:
     response = client.post("/api/v1/compare", json={"propertyValue": 250_000})
     assert response.status_code == 200
     body = response.json()
-    assert body["withOverpayments"]["principal"] == 250_000 - DEFAULT_DEPOSIT
-    assert body["withoutOverpayments"]["principal"] == 250_000 - DEFAULT_DEPOSIT
+    assert body["withOverpayments"]["principal"] == 250_000 - DERIVED_DEPOSIT_250K
+    assert body["withoutOverpayments"]["principal"] == 250_000 - DERIVED_DEPOSIT_250K
 
 
 def test_calculate_with_only_property_value_uses_defaults() -> None:
     response = client.post("/api/v1/calculate", json={"propertyValue": 250_000})
     assert response.status_code == 200
     body = response.json()
-    assert body["principal"] == 250_000 - DEFAULT_DEPOSIT
+    # deriveDepositFromSavings is on by default, so deposit resolves to
+    # depositSavings minus SDLT (SDLT is £0 here — FTB, under the £300k
+    # zero-rate threshold), not the flat `deposit` default.
+    assert body["principal"] == 250_000 - DERIVED_DEPOSIT_250K
     # Every other field defaults too, including the rent+savings pool and
     # 'auto' overpayment mode — real overpayments pay this off well before
     # the default 300-month term.
