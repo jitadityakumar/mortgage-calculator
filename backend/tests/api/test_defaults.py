@@ -160,6 +160,23 @@ def test_put_defaults_changes_what_partial_calculate_resolves_to_for_rate_after_
     assert entry["ratePct"] == SEED.variableRateAnnualPct
 
 
+def test_put_defaults_accepts_hybrid_as_the_admin_default_rate_after_fixed_term_mode(
+    client: TestClient,
+) -> None:
+    updated = {**SEED.model_dump(exclude={"updatedAt"}), "rateAfterFixedTermMode": "hybrid"}
+    put_response = client.put("/api/v1/defaults", json=updated)
+    assert put_response.status_code == 200
+    assert put_response.json()["rateAfterFixedTermMode"] == "hybrid"
+
+    get_response = client.get("/api/v1/defaults")
+    assert get_response.json()["rateAfterFixedTermMode"] == "hybrid"
+
+    # A partial /calculate that omits rateAfterFixedTermMode now resolves to
+    # (and echoes back) the admin-set hybrid default.
+    calc_response = client.post("/api/v1/calculate", json={"propertyValue": 250_000})
+    assert calc_response.json()["rateAfterFixedTermMode"] == "hybrid"
+
+
 def test_put_defaults_changes_what_saved_calculation_resolves_to(client: TestClient) -> None:
     # deriveDepositFromSavings=false so the flat `deposit` default (not
     # depositSavings minus SDLT) is what a partial save resolves to.

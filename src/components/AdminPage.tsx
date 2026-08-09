@@ -359,6 +359,7 @@ export function AdminPage() {
                 >
                   <option value="remortgageToNewFixed">Remortgage into a new fixed deal</option>
                   <option value="stayOnVariable">Move onto the variable rate and stay there</option>
+                  <option value="hybrid">Hybrid — switch to variable only once it would clear in time</option>
                 </select>
               </label>
               <label className="field">

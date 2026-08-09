@@ -8,7 +8,7 @@ OverpaymentMode = Literal["reduceTerm", "reducePayment"]
 AllowanceBasis = Literal["outstanding", "original"]
 MonthlyOverpaymentAmountMode = Literal["none", "fixed", "auto"]
 BankedSavingsDestination = Literal["lumpSumEachCycle", "keepAsSavings"]
-RateAfterFixedTermMode = Literal["remortgageToNewFixed", "stayOnVariable"]
+RateAfterFixedTermMode = Literal["remortgageToNewFixed", "stayOnVariable", "hybrid"]
 
 
 class LumpSumOverpayment(BaseModel):
@@ -134,6 +134,11 @@ class MortgageResult(BaseModel):
     principal: float
     initialMonthlyPayment: float
     variablePeriodMonthlyPayment: float
+    # Echoes the rateAfterFixedTermMode actually used for this calculation —
+    # the request field is optional (resolve_mortgage_inputs() falls back to
+    # the admin-set default), so callers who omitted it need a way to see
+    # what was actually applied without a second round-trip to /defaults.
+    rateAfterFixedTermMode: RateAfterFixedTermMode
     payoffMonth: int
     totalInterestPaid: float
     totalPrincipalPaid: float

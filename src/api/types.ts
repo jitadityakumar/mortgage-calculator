@@ -10,7 +10,7 @@ export type OverpaymentMode = 'reduceTerm' | 'reducePayment';
 export type AllowanceBasis = 'outstanding' | 'original';
 export type MonthlyOverpaymentAmountMode = 'none' | 'fixed' | 'auto';
 export type BankedSavingsDestination = 'lumpSumEachCycle' | 'keepAsSavings';
-export type RateAfterFixedTermMode = 'remortgageToNewFixed' | 'stayOnVariable';
+export type RateAfterFixedTermMode = 'remortgageToNewFixed' | 'stayOnVariable' | 'hybrid';
 
 export interface LumpSumOverpayment {
   atMonth: number;
@@ -74,6 +74,9 @@ export interface MortgageResult {
   principal: number;
   initialMonthlyPayment: number;
   variablePeriodMonthlyPayment: number;
+  /** The rateAfterFixedTermMode actually used — echoes back the admin-set
+   * default when the request omitted it. */
+  rateAfterFixedTermMode: RateAfterFixedTermMode;
   payoffMonth: number;
   totalInterestPaid: number;
   totalPrincipalPaid: number;

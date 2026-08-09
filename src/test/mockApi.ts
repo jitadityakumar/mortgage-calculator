@@ -108,6 +108,7 @@ function buildResult(inputs: MortgageInputs, applyOverpayment: boolean): Mortgag
     principal,
     initialMonthlyPayment,
     variablePeriodMonthlyPayment: fixedTermMonths > 0 && fixedTermMonths < totalTermMonths ? initialMonthlyPayment * 1.1 : 0,
+    rateAfterFixedTermMode: inputs.rateAfterFixedTermMode ?? MOCK_DEFAULTS.rateAfterFixedTermMode,
     payoffMonth,
     totalInterestPaid,
     totalPrincipalPaid: principal,

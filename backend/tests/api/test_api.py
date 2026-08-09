@@ -44,6 +44,21 @@ def test_calculate_returns_full_result() -> None:
     assert body["schedule"][-1]["closingBalance"] == 0
 
 
+def test_calculate_echoes_the_resolved_rate_after_fixed_term_mode() -> None:
+    # A request that omits rateAfterFixedTermMode resolves from the
+    # admin-editable default (shipped default: remortgageToNewFixed) — the
+    # response should say so, since the caller has no other way to know
+    # which mode was actually applied without a second round-trip.
+    omitted = client.post("/api/v1/calculate", json={"propertyValue": 250_000})
+    assert omitted.json()["rateAfterFixedTermMode"] == "remortgageToNewFixed"
+
+    explicit = client.post(
+        "/api/v1/calculate",
+        json={"propertyValue": 250_000, "rateAfterFixedTermMode": "hybrid"},
+    )
+    assert explicit.json()["rateAfterFixedTermMode"] == "hybrid"
+
+
 def test_compare_returns_both_scenarios() -> None:
     response = client.post(
         "/api/v1/compare",

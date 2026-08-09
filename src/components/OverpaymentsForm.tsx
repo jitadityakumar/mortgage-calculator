@@ -211,6 +211,18 @@ export function OverpaymentsForm({ form, update, initialMonthlyPayment }: Overpa
           />
           <span>Move onto the variable rate and stay there</span>
         </label>
+        <label className="radio-field">
+          <input
+            type="radio"
+            name="rateAfterFixedTermMode"
+            checked={form.rateAfterFixedTermMode === 'hybrid'}
+            onChange={() => update('rateAfterFixedTermMode', 'hybrid')}
+          />
+          <span>
+            Hybrid — check each time the fixed deal ends: if moving to variable now would clear the mortgage
+            within another fixed deal's length, do that instead of remortgaging again
+          </span>
+        </label>
       </div>
 
       <div className="radio-group">
@@ -235,17 +247,22 @@ export function OverpaymentsForm({ form, update, initialMonthlyPayment }: Overpa
         </label>
       </div>
 
-      {form.bankedSavingsDestination === 'lumpSumEachCycle' && form.rateAfterFixedTermMode === 'stayOnVariable' && (
-        <NumberField
-          label="Pay out banked savings every"
-          suffix="months"
-          value={form.savingsPayoutIntervalMonths}
-          onChange={(v) => update('savingsPayoutIntervalMonths', v)}
-          step="1"
-          min="1"
-          hint="The first payout lands the month your fixed deal ends, then repeats on this schedule — e.g. 3 for every quarter, 6 for twice a year, or 12, 24, etc. for whole years."
-        />
-      )}
+      {form.bankedSavingsDestination === 'lumpSumEachCycle' &&
+        (form.rateAfterFixedTermMode === 'stayOnVariable' || form.rateAfterFixedTermMode === 'hybrid') && (
+          <NumberField
+            label="Pay out banked savings every"
+            suffix="months"
+            value={form.savingsPayoutIntervalMonths}
+            onChange={(v) => update('savingsPayoutIntervalMonths', v)}
+            step="1"
+            min="1"
+            hint={
+              form.rateAfterFixedTermMode === 'hybrid'
+                ? "Only applies once hybrid switches onto the variable rate for good: the first payout lands that month, then repeats on this schedule. While it's still cycling through fixed deals, savings pay out at each remortgage instead."
+                : "The first payout lands the month your fixed deal ends, then repeats on this schedule — e.g. 3 for every quarter, 6 for twice a year, or 12, 24, etc. for whole years."
+            }
+          />
+        )}
 
       {form.bankedSavingsDestination === 'lumpSumEachCycle' && form.rateAfterFixedTermMode === 'remortgageToNewFixed' && (
         <p className="field-hint">
@@ -254,7 +271,7 @@ export function OverpaymentsForm({ form, update, initialMonthlyPayment }: Overpa
         </p>
       )}
 
-      {form.rateAfterFixedTermMode === 'remortgageToNewFixed' && (
+      {(form.rateAfterFixedTermMode === 'remortgageToNewFixed' || form.rateAfterFixedTermMode === 'hybrid') && (
         <>
           <NumberField
             label="Time to arrange the next fixed deal"
@@ -262,7 +279,7 @@ export function OverpaymentsForm({ form, update, initialMonthlyPayment }: Overpa
             value={form.remortgageGapMonths}
             onChange={(v) => update('remortgageGapMonths', v)}
             step="1"
-            hint="Time spent on the follow-on/variable rate between one fixed deal ending and the next one starting."
+            hint="Time spent on the follow-on/variable rate between one fixed deal ending and the next one starting — only used while hybrid is still cycling through fixed deals, if that's what's selected above."
           />
           <p className="field-hint">
             UK product transfers with your existing lender can complete in a few working days, but that's for a
