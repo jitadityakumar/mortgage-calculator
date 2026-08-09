@@ -208,7 +208,7 @@ function MortgageCalculator({ defaults }: { defaults: MortgageDefaults }) {
           <OverpaymentsForm
             form={form}
             update={update}
-            initialMonthlyPayment={comparison?.withOverpayments.initialMonthlyPayment}
+            initialMonthlyPayment={comparison?.withOverpayments.monthlyPayments[0]?.payment}
           />
           <AdvancedConfig form={form} update={update} />
           <SdltCalculator

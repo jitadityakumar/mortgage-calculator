@@ -74,11 +74,18 @@ export interface MonthlyScheduleEntry {
   closingBalance: number;
 }
 
+export interface MonthlyPaymentPeriod {
+  fromMonth: number;
+  payment: number;
+  isVariable: boolean;
+}
+
 export interface MortgageResult {
   schedule: MonthlyScheduleEntry[];
   principal: number;
-  initialMonthlyPayment: number;
-  variablePeriodMonthlyPayment: number;
+  /** One entry per payment recast at a rate/regime change (initial payment,
+   * each remortgage, each switch to/from variable), in order. */
+  monthlyPayments: MonthlyPaymentPeriod[];
   /** The rateAfterFixedTermMode actually used — echoes back the admin-set
    * default when the request omitted it. */
   rateAfterFixedTermMode: RateAfterFixedTermMode;
@@ -88,6 +95,10 @@ export interface MortgageResult {
   totalOverpaid: number;
   totalErcPaid: number;
   totalRepaid: number;
+  /** propertyValue + SDLT + totalInterestPaid — the all-in cost of the
+   * property itself, distinct from totalRepaid (money paid to the lender
+   * only). */
+  totalPaid: number;
   monthsSavedVsOriginalTerm: number;
   unallocatedSavingsPot: number;
   warnings: string[];

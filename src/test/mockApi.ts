@@ -2,6 +2,7 @@ import { beforeEach, vi } from 'vitest';
 import { computeHasOverpayments } from '../hasOverpayments';
 import type {
   ComparisonResult,
+  MonthlyPaymentPeriod,
   MonthlyScheduleEntry,
   MortgageDefaults,
   MortgageInputs,
@@ -103,11 +104,19 @@ function buildResult(inputs: MortgageInputs, applyOverpayment: boolean): Mortgag
   const totalInterestPaid = schedule.reduce((sum, e) => sum + e.interestPaid, 0);
   const totalOverpaid = schedule.reduce((sum, e) => sum + e.overpaymentPaid, 0);
 
+  const monthlyPayments: MonthlyPaymentPeriod[] = [{ fromMonth: 1, payment: initialMonthlyPayment, isVariable: false }];
+  if (fixedTermMonths > 0 && fixedTermMonths < totalTermMonths) {
+    monthlyPayments.push({
+      fromMonth: fixedTermMonths + 1,
+      payment: initialMonthlyPayment * 1.1,
+      isVariable: true,
+    });
+  }
+
   return {
     schedule,
     principal,
-    initialMonthlyPayment,
-    variablePeriodMonthlyPayment: fixedTermMonths > 0 && fixedTermMonths < totalTermMonths ? initialMonthlyPayment * 1.1 : 0,
+    monthlyPayments,
     rateAfterFixedTermMode: inputs.rateAfterFixedTermMode ?? MOCK_DEFAULTS.rateAfterFixedTermMode,
     payoffMonth,
     totalInterestPaid,
@@ -115,6 +124,7 @@ function buildResult(inputs: MortgageInputs, applyOverpayment: boolean): Mortgag
     totalOverpaid,
     totalErcPaid: 0,
     totalRepaid: principal + totalInterestPaid + totalOverpaid,
+    totalPaid: inputs.propertyValue + totalInterestPaid,
     monthsSavedVsOriginalTerm: reduction,
     unallocatedSavingsPot: 0,
     warnings: [],

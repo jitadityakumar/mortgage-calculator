@@ -4,8 +4,10 @@ from typing import Optional
 
 from .config import load_seed_defaults, resolve_config, resolve_mortgage_inputs
 from .money import js_round, pence_to_pounds, pounds_to_pence
+from .sdlt import calculate_sdlt
 from .types import (
     ComparisonResult,
+    MonthlyPaymentPeriod,
     MonthlyScheduleEntry,
     MortgageConfig,
     MortgageDefaults,
@@ -179,6 +181,7 @@ def calculate_mortgage(inputs: MortgageInputs, defaults: Optional[MortgageDefaul
     config = resolve_config(inputs.config, d)
     mode = inputs.overpaymentMode
     warnings: list[str] = []
+    sdlt_total_tax = calculate_sdlt(inputs.propertyValue, d.isFirstTimeBuyer).totalTax
 
     fee_pence = pounds_to_pence(config.arrangementFee)
     base_principal_pence = pounds_to_pence(inputs.propertyValue - inputs.deposit)
@@ -237,8 +240,7 @@ def calculate_mortgage(inputs: MortgageInputs, defaults: Optional[MortgageDefaul
 
     balance = principal_pence
     current_payment = initial_monthly_payment_pence
-    variable_period_monthly_payment_pence = 0
-    captured_variable_period_payment = False
+    monthly_payment_periods: list[MonthlyPaymentPeriod] = []
 
     allowance_limit_this_year = _compute_allowance_limit_pence(balance, principal_pence, config)
     allowance_used_this_year = 0
@@ -283,9 +285,15 @@ def calculate_mortgage(inputs: MortgageInputs, defaults: Optional[MortgageDefaul
         if is_regime_start:
             remaining_months = total_term_months - month + 1
             current_payment = _calc_monthly_payment_pence(balance, monthly_rate, remaining_months)
-            if is_variable_period and not captured_variable_period_payment:
-                variable_period_monthly_payment_pence = current_payment
-                captured_variable_period_payment = True
+
+        if month == 1 or is_regime_start:
+            monthly_payment_periods.append(
+                MonthlyPaymentPeriod(
+                    fromMonth=month,
+                    payment=pence_to_pounds(current_payment),
+                    isVariable=is_variable_period,
+                )
+            )
 
         if (month - 1) % 12 == 0:
             allowance_limit_this_year = _compute_allowance_limit_pence(balance, principal_pence, config)
@@ -476,8 +484,7 @@ def calculate_mortgage(inputs: MortgageInputs, defaults: Optional[MortgageDefaul
     return MortgageResult(
         schedule=schedule if inputs.includeSchedule else [],
         principal=pence_to_pounds(principal_pence),
-        initialMonthlyPayment=pence_to_pounds(initial_monthly_payment_pence),
-        variablePeriodMonthlyPayment=pence_to_pounds(variable_period_monthly_payment_pence),
+        monthlyPayments=monthly_payment_periods,
         rateAfterFixedTermMode=rate_after_fixed_term_mode,
         payoffMonth=payoff_month,
         totalInterestPaid=pence_to_pounds(total_interest_pence),
@@ -487,6 +494,7 @@ def calculate_mortgage(inputs: MortgageInputs, defaults: Optional[MortgageDefaul
         totalRepaid=pence_to_pounds(total_interest_pence + total_principal_pence + total_overpaid_pence + total_erc_pence),
         monthsSavedVsOriginalTerm=total_term_months - payoff_month,
         unallocatedSavingsPot=pence_to_pounds(savings_pot_pence),
+        totalPaid=inputs.propertyValue + sdlt_total_tax + pence_to_pounds(total_interest_pence),
         warnings=warnings,
     )
 
