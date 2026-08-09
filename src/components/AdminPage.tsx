@@ -195,8 +195,17 @@ export function AdminPage() {
 
       {form && (
         <>
-          <div className="card">
+          <fieldset className="card">
+            <legend>Mortgage details</legend>
             <div className="field-grid">
+              <NumberField
+                label="Deposit savings"
+                prefix="£"
+                value={form.depositSavings}
+                onChange={(v) => update('depositSavings', v)}
+                step="1000"
+                hint="Starting value for the calculator's 'Deposit savings' field. Only feeds the deposit auto-fill while 'Derive deposit from savings' below is checked."
+              />
               <NumberField
                 label="Deposit"
                 prefix="£"
@@ -209,30 +218,6 @@ export function AdminPage() {
                     : "Used everywhere, including the calculator's own pre-filled deposit, since 'Derive deposit from savings' is unchecked."
                 }
               />
-              <NumberField
-                label="Deposit savings"
-                prefix="£"
-                value={form.depositSavings}
-                onChange={(v) => update('depositSavings', v)}
-                step="1000"
-                hint="Starting value for the calculator's 'Deposit savings' field. Only feeds the deposit auto-fill while 'Derive deposit from savings' below is checked."
-              />
-              <label className="checkbox-field">
-                <input
-                  type="checkbox"
-                  checked={form.deriveDepositFromSavings}
-                  onChange={(e) => update('deriveDepositFromSavings', e.target.checked)}
-                />
-                <span>Derive deposit from savings (deposit auto-fills as Deposit savings minus SDLT, live as the user types)</span>
-              </label>
-              <label className="checkbox-field">
-                <input
-                  type="checkbox"
-                  checked={form.isFirstTimeBuyer}
-                  onChange={(e) => update('isFirstTimeBuyer', e.target.checked)}
-                />
-                <span>First-time buyer by default (affects SDLT, which feeds the deposit auto-fill)</span>
-              </label>
               <NumberField
                 label="Fixed rate"
                 suffix="% / year"
@@ -261,22 +246,28 @@ export function AdminPage() {
                 onChange={(v) => update('totalTermYears', v)}
                 step="1"
               />
-              <NumberField
-                label="Remortgage gap"
-                suffix="months"
-                value={form.remortgageGapMonths}
-                onChange={(v) => update('remortgageGapMonths', v)}
-                step="1"
-                hint="Penalty-free variable-rate gap between fixed-rate cycles, when rate-cycling is on."
+            </div>
+            <label className="checkbox-field">
+              <input
+                type="checkbox"
+                checked={form.isFirstTimeBuyer}
+                onChange={(e) => update('isFirstTimeBuyer', e.target.checked)}
               />
-              <NumberField
-                label="Savings payout interval"
-                suffix="months"
-                value={form.savingsPayoutIntervalMonths}
-                onChange={(v) => update('savingsPayoutIntervalMonths', v)}
-                step="1"
-                min="1"
+              <span>First-time buyer by default (affects SDLT, which feeds the deposit auto-fill)</span>
+            </label>
+            <label className="checkbox-field">
+              <input
+                type="checkbox"
+                checked={form.deriveDepositFromSavings}
+                onChange={(e) => update('deriveDepositFromSavings', e.target.checked)}
               />
+              <span>Derive deposit from savings (deposit auto-fills as Deposit savings minus SDLT, live as the user types)</span>
+            </label>
+          </fieldset>
+
+          <fieldset className="card">
+            <legend>Overpayments</legend>
+            <div className="field-grid">
               <label className="field">
                 <span className="field-label">When you overpay, it should...</span>
                 <select
@@ -317,6 +308,12 @@ export function AdminPage() {
                 min="0"
                 hint="Used when 'Monthly overpayment amount' is 'Auto' — also the calculator's initial pre-fill for that field."
               />
+            </div>
+          </fieldset>
+
+          <fieldset className="card">
+            <legend>Post fixed deal</legend>
+            <div className="field-grid">
               <label className="field">
                 <span className="field-label">Banked savings destination</span>
                 <select
@@ -327,12 +324,28 @@ export function AdminPage() {
                   <option value="keepAsSavings">Keep as savings</option>
                 </select>
               </label>
+              <NumberField
+                label="Savings payout interval"
+                suffix="months"
+                value={form.savingsPayoutIntervalMonths}
+                onChange={(v) => update('savingsPayoutIntervalMonths', v)}
+                step="1"
+                min="1"
+              />
+              <NumberField
+                label="Remortgage gap"
+                suffix="months"
+                value={form.remortgageGapMonths}
+                onChange={(v) => update('remortgageGapMonths', v)}
+                step="1"
+                hint="Penalty-free variable-rate gap between fixed-rate cycles, when rate-cycling is on."
+              />
             </div>
-          </div>
+          </fieldset>
 
           <fieldset className="card">
             <legend>
-              <span className="field-label">Overpayment allowance / ERC configuration</span>
+              <span className="field-label">Advanced assumptions</span>
             </legend>
             <div className="field-grid">
               <NumberField
