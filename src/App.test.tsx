@@ -51,7 +51,7 @@ describe('App', () => {
 
   it('renders default results for the pre-filled inputs', async () => {
     await renderApp();
-    expect(await screen.findByText('Monthly payment (fixed period)')).toBeInTheDocument();
+    expect(await screen.findByText('Monthly payment (from the start)')).toBeInTheDocument();
     expect(screen.getAllByText('Time to pay off').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Total interest paid').length).toBeGreaterThan(0);
   });
@@ -65,7 +65,7 @@ describe('App', () => {
     await user.type(depositInput, '999999');
 
     expect(await screen.findByText('Check your inputs')).toBeInTheDocument();
-    expect(screen.queryByText('Monthly payment (fixed period)')).not.toBeInTheDocument();
+    expect(screen.queryByText('Monthly payment (from the start)')).not.toBeInTheDocument();
   });
 
   it('the default auto overpayment mode produces a comparison out of the box', async () => {

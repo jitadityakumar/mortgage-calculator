@@ -1,5 +1,5 @@
 import type { ComparisonResult } from '../api/types';
-import { formatGBP, formatMonthsAsYearsMonths } from '../format';
+import { formatGBP, formatMonthCompact, formatMonthsAsYearsMonths } from '../format';
 
 interface ResultsSummaryProps {
   comparison: ComparisonResult;
@@ -15,15 +15,9 @@ export function ResultsSummary({ comparison, hasOverpayments }: ResultsSummaryPr
 
       <div className="stat-grid">
         <div className="stat">
-          <span className="stat-label">Monthly payment (fixed period)</span>
-          <span className="stat-value">{formatGBP(withOverpayments.initialMonthlyPayment, true)}</span>
+          <span className="stat-label">Monthly payment{withOverpayments.monthlyPayments.length > 1 ? ' (from the start)' : ''}</span>
+          <span className="stat-value">{formatGBP(withOverpayments.monthlyPayments[0]?.payment ?? 0, true)}</span>
         </div>
-        {withOverpayments.variablePeriodMonthlyPayment > 0 && (
-          <div className="stat">
-            <span className="stat-label">Monthly payment (after fixed period)</span>
-            <span className="stat-value">{formatGBP(withOverpayments.variablePeriodMonthlyPayment, true)}</span>
-          </div>
-        )}
         <div className="stat">
           <span className="stat-label">Time to pay off</span>
           <span className="stat-value">{formatMonthsAsYearsMonths(withOverpayments.payoffMonth)}</span>
@@ -49,6 +43,13 @@ export function ResultsSummary({ comparison, hasOverpayments }: ResultsSummaryPr
             </span>
           )}
         </div>
+        <div className="stat">
+          <span className="stat-label">Total paid for the property</span>
+          <span className="stat-value">{formatGBP(withOverpayments.totalPaid)}</span>
+          {hasOverpayments && (
+            <span className="stat-delta">vs {formatGBP(withoutOverpayments.totalPaid)} without overpaying</span>
+          )}
+        </div>
         {withOverpayments.totalErcPaid > 0 && (
           <div className="stat">
             <span className="stat-label">Early Repayment Charges</span>
@@ -56,6 +57,23 @@ export function ResultsSummary({ comparison, hasOverpayments }: ResultsSummaryPr
           </div>
         )}
       </div>
+
+      {withOverpayments.monthlyPayments.length > 1 && (
+        <div className="payment-periods">
+          <h3>Monthly payment over time</h3>
+          <ul>
+            {withOverpayments.monthlyPayments.map((p) => (
+              <li key={p.fromMonth}>
+                <span className="payment-period-from">
+                  {p.fromMonth === 1 ? 'From the start' : `From ${formatMonthCompact(p.fromMonth - 1)}`}
+                </span>
+                <span className="payment-period-amount">{formatGBP(p.payment, true)}</span>
+                <span className="payment-period-rate">{p.isVariable ? 'variable' : 'fixed'}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {hasOverpayments && (
         <div className="comparison">
@@ -83,6 +101,11 @@ export function ResultsSummary({ comparison, hasOverpayments }: ResultsSummaryPr
                 <td>Total repaid</td>
                 <td>{formatGBP(withoutOverpayments.totalRepaid)}</td>
                 <td>{formatGBP(withOverpayments.totalRepaid)}</td>
+              </tr>
+              <tr>
+                <td>Total paid for the property</td>
+                <td>{formatGBP(withoutOverpayments.totalPaid)}</td>
+                <td>{formatGBP(withOverpayments.totalPaid)}</td>
               </tr>
             </tbody>
           </table>

@@ -74,9 +74,11 @@ def test_matches_the_standard_annuity_formula_for_a_plain_no_overpayment_loan():
     expected_payment = reference_monthly_payment(200_000, 5, 300)
 
     assert result.principal == 200_000
-    assert result.initialMonthlyPayment == pytest.approx(expected_payment, abs=0.05)
+    assert result.monthlyPayments[0].fromMonth == 1
+    assert result.monthlyPayments[0].isVariable is False
+    assert result.monthlyPayments[0].payment == pytest.approx(expected_payment, abs=0.05)
     # Known reference value for £200,000 / 5% / 25yr (300mo) ≈ £1,169.18/mo.
-    assert result.initialMonthlyPayment == pytest.approx(1169.18, abs=0.05)
+    assert result.monthlyPayments[0].payment == pytest.approx(1169.18, abs=0.05)
 
 
 def test_fully_amortizes_schedule_ends_at_exactly_zero_balance_with_no_negative_dip():
@@ -98,9 +100,19 @@ def test_special_cases_a_0_pct_interest_rate_instead_of_dividing_by_zero():
     result = calculate_mortgage(
         base_inputs({"fixedRateAnnualPct": 0, "variableRateAnnualPct": 0})
     )
-    assert result.initialMonthlyPayment == pytest.approx(200_000 / 300, abs=0.005)
+    assert result.monthlyPayments[0].payment == pytest.approx(200_000 / 300, abs=0.005)
     assert result.totalInterestPaid == 0
     assert result.schedule[-1].closingBalance == 0
+
+
+def test_total_paid_is_property_value_plus_sdlt_plus_total_interest():
+    # propertyValue 250_000 with the seed's isFirstTimeBuyer setting, same
+    # SDLT reference calc DERIVED_DEPOSIT_250K above already relies on.
+    inputs = base_inputs({"propertyValue": 250_000, "deposit": 50_000})
+    result = calculate_mortgage(inputs)
+    sdlt = calculate_sdlt(250_000, _SEED.isFirstTimeBuyer)
+    expected_total_paid = 250_000 + sdlt.totalTax + result.totalInterestPaid
+    assert result.totalPaid == pytest.approx(expected_total_paid, abs=0.01)
 
 
 # calculateMortgage — fixed to variable rate transition (no cycling)
@@ -120,7 +132,10 @@ def test_recasts_the_payment_at_the_fixed_variable_boundary_using_the_actual_rem
 
     remaining_balance = last_fixed_month.closingBalance
     expected_recast_payment = reference_monthly_payment(remaining_balance, 7.25, 300 - 60)
-    assert result.variablePeriodMonthlyPayment == pytest.approx(expected_recast_payment, abs=0.05)
+    assert len(result.monthlyPayments) == 2
+    assert result.monthlyPayments[1].fromMonth == 61
+    assert result.monthlyPayments[1].isVariable is True
+    assert result.monthlyPayments[1].payment == pytest.approx(expected_recast_payment, abs=0.05)
     assert first_variable_month.scheduledPayment == pytest.approx(expected_recast_payment, abs=0.05)
 
     # Payment actually changes at the boundary (rates differ meaningfully here).
@@ -132,7 +147,8 @@ def test_recasts_the_payment_at_the_fixed_variable_boundary_using_the_actual_rem
 
 def test_never_enters_a_variable_period_if_fixed_term_months_equals_total_term_months():
     result = calculate_mortgage(base_inputs({"fixedTermMonths": 300, "variableRateAnnualPct": 99}))
-    assert result.variablePeriodMonthlyPayment == 0
+    assert len(result.monthlyPayments) == 1
+    assert result.monthlyPayments[0].isVariable is False
     assert all(e.ratePct == 5 for e in result.schedule)
 
 

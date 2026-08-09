@@ -310,6 +310,48 @@ fieldset {
   color: var(--text-muted);
 }
 
+.payment-periods {
+  margin-top: 22px;
+}
+
+.payment-periods h3 {
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+
+.payment-periods ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.payment-periods li {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 13px;
+  padding: 6px 10px;
+  background: var(--accent-bg);
+  border-radius: 6px;
+}
+
+.payment-period-from {
+  flex: 1;
+  color: var(--text-muted);
+}
+
+.payment-period-amount {
+  font-weight: 700;
+  color: var(--text-h);
+}
+
+.payment-period-rate {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
 .comparison {
   margin-top: 22px;
 }

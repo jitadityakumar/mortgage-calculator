@@ -134,11 +134,20 @@ class MonthlyScheduleEntry(BaseModel):
     closingBalance: float
 
 
+class MonthlyPaymentPeriod(BaseModel):
+    fromMonth: int
+    payment: float
+    isVariable: bool
+
+
 class MortgageResult(BaseModel):
     schedule: list[MonthlyScheduleEntry]
     principal: float
-    initialMonthlyPayment: float
-    variablePeriodMonthlyPayment: float
+    # One entry per payment recast at a rate/regime change (initial payment,
+    # each remortgage onto a new fixed deal, each switch to/from variable) —
+    # NOT every reducePayment-mode recast, which happens near-monthly and is
+    # already fully visible per-month in `schedule[].scheduledPayment`.
+    monthlyPayments: list[MonthlyPaymentPeriod]
     # Echoes the rateAfterFixedTermMode actually used for this calculation —
     # the request field is optional (resolve_mortgage_inputs() falls back to
     # the admin-set default), so callers who omitted it need a way to see
@@ -150,6 +159,10 @@ class MortgageResult(BaseModel):
     totalOverpaid: float
     totalErcPaid: float
     totalRepaid: float
+    # propertyValue + SDLT + totalInterestPaid — the real all-in cost of the
+    # property itself, as distinct from totalRepaid (money paid to the
+    # lender only: principal + interest + overpayments + ERC).
+    totalPaid: float
     monthsSavedVsOriginalTerm: int
     unallocatedSavingsPot: float
     warnings: list[str]
