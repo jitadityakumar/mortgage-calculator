@@ -494,6 +494,7 @@ def calculate_mortgage(inputs: MortgageInputs, defaults: Optional[MortgageDefaul
         totalRepaid=pence_to_pounds(total_interest_pence + total_principal_pence + total_overpaid_pence + total_erc_pence),
         monthsSavedVsOriginalTerm=total_term_months - payoff_month,
         unallocatedSavingsPot=pence_to_pounds(savings_pot_pence),
+        sdltPaid=sdlt_total_tax,
         totalPaid=inputs.propertyValue + sdlt_total_tax + pence_to_pounds(total_interest_pence),
         warnings=warnings,
     )

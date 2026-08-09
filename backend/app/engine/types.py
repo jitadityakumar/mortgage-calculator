@@ -159,6 +159,9 @@ class MortgageResult(BaseModel):
     totalOverpaid: float
     totalErcPaid: float
     totalRepaid: float
+    # SDLT owed on propertyValue given the resolved isFirstTimeBuyer default —
+    # broken out separately so callers can see the totalPaid breakdown.
+    sdltPaid: float
     # propertyValue + SDLT + totalInterestPaid — the real all-in cost of the
     # property itself, as distinct from totalRepaid (money paid to the
     # lender only: principal + interest + overpayments + ERC).

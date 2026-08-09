@@ -124,6 +124,7 @@ function buildResult(inputs: MortgageInputs, applyOverpayment: boolean): Mortgag
     totalOverpaid,
     totalErcPaid: 0,
     totalRepaid: principal + totalInterestPaid + totalOverpaid,
+    sdltPaid: 0,
     totalPaid: inputs.propertyValue + totalInterestPaid,
     monthsSavedVsOriginalTerm: reduction,
     unallocatedSavingsPot: 0,

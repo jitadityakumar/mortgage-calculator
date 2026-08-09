@@ -95,6 +95,8 @@ export interface MortgageResult {
   totalOverpaid: number;
   totalErcPaid: number;
   totalRepaid: number;
+  /** SDLT owed on propertyValue given the resolved isFirstTimeBuyer default. */
+  sdltPaid: number;
   /** propertyValue + SDLT + totalInterestPaid — the all-in cost of the
    * property itself, distinct from totalRepaid (money paid to the lender
    * only). */
