@@ -113,6 +113,26 @@ describe('AdminPage', () => {
     ).toBe(false);
   });
 
+  it('edits fixed monthly overpayment and target allowance utilization, and saves', async () => {
+    const user = userEvent.setup();
+    await renderAdminPage();
+
+    expect(getInputForLabel('Fixed monthly overpayment').value).toBe('300');
+    expect(getInputForLabel('Target allowance utilization').value).toBe('50');
+
+    const fixedInput = getInputForLabel('Fixed monthly overpayment');
+    await user.clear(fixedInput);
+    await user.type(fixedInput, '450');
+    const targetInput = getInputForLabel('Target allowance utilization');
+    await user.clear(targetInput);
+    await user.type(targetInput, '75');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await screen.findByText('Saved.');
+    expect(getInputForLabel('Fixed monthly overpayment').value).toBe('450');
+    expect(getInputForLabel('Target allowance utilization').value).toBe('75');
+  });
+
   it('does not reset when the confirmation is declined', async () => {
     const user = userEvent.setup();
     await renderAdminPage();

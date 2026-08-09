@@ -116,6 +116,10 @@ def resolve_mortgage_inputs(
         updates["overpaymentMode"] = d.overpaymentMode
     if inputs.monthlyOverpaymentAmountMode is None:
         updates["monthlyOverpaymentAmountMode"] = d.monthlyOverpaymentAmountMode
+    if inputs.fixedMonthlyOverpayment is None:
+        updates["fixedMonthlyOverpayment"] = d.fixedMonthlyOverpayment
+    if inputs.targetAllowanceUtilizationPct is None:
+        updates["targetAllowanceUtilizationPct"] = d.targetAllowanceUtilizationPct
     if inputs.bankedSavingsDestination is None:
         updates["bankedSavingsDestination"] = d.bankedSavingsDestination
     if not updates:

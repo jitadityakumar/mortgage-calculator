@@ -68,16 +68,13 @@ def calculate_mortgage(inputs: MortgageInputs, defaults: Optional[MortgageDefaul
     savings_payout_interval_months = max(
         1,
         js_round(
-            (
-                inputs.savingsPayoutIntervalYears
-                if inputs.savingsPayoutIntervalYears is not None
-                else d.savingsPayoutIntervalYears
-            )
-            * 12
+            inputs.savingsPayoutIntervalMonths
+            if inputs.savingsPayoutIntervalMonths is not None
+            else d.savingsPayoutIntervalMonths
         ),
     )
-    fixed_monthly_overpayment_pence = pounds_to_pence(inputs.fixedMonthlyOverpayment or 0)
-    target_utilization_pct = inputs.targetAllowanceUtilizationPct if inputs.targetAllowanceUtilizationPct is not None else 100
+    fixed_monthly_overpayment_pence = pounds_to_pence(inputs.fixedMonthlyOverpayment)
+    target_utilization_pct = inputs.targetAllowanceUtilizationPct
     monthly_budget_pool_pence = max(
         0,
         pounds_to_pence(

@@ -21,7 +21,7 @@ export function mapFormStateToInputs(form: FormState): MortgageInputs {
     targetAllowanceUtilizationPct: parseNum(form.targetAllowanceUtilizationPct),
 
     bankedSavingsDestination: form.bankedSavingsDestination,
-    savingsPayoutIntervalYears: parseNum(form.savingsPayoutIntervalYears),
+    savingsPayoutIntervalMonths: Math.round(parseNum(form.savingsPayoutIntervalMonths)),
     rateAfterFixedTermMode: form.rateAfterFixedTermMode,
     remortgageGapMonths: Math.round(parseNum(form.remortgageGapMonths)),
 
@@ -80,24 +80,24 @@ export function mapInputsToFormState(
     overpaymentMode: inputs.overpaymentMode ?? currentForm.overpaymentMode,
     // 0 is the correct fallback here: these three are additive inputs to the
     // rent+savings pool, and "not set" and "set to 0" are the same no-op
-    // contribution — unlike savingsPayoutIntervalYears/remortgageGapMonths
+    // contribution — unlike savingsPayoutIntervalMonths/remortgageGapMonths
     // below, where 0 is either invalid or a different real value.
     currentRent: String(inputs.currentRent ?? 0),
     monthlySavings: String(inputs.monthlySavings ?? 0),
     serviceCharge: String(inputs.serviceCharge ?? 0),
 
     monthlyOverpaymentAmountMode: inputs.monthlyOverpaymentAmountMode ?? currentForm.monthlyOverpaymentAmountMode,
-    fixedMonthlyOverpayment: String(inputs.fixedMonthlyOverpayment ?? 0),
-    // Falls back to the current form's value (the app's own opinionated
-    // default, e.g. 50%) rather than a literal — the backend's raw default
-    // (100%) lives only in mortgage.py, not exported as a shared constant,
-    // and re-deriving it here would be another copy to keep in sync.
-    targetAllowanceUtilizationPct: String(inputs.targetAllowanceUtilizationPct ?? parseNum(currentForm.targetAllowanceUtilizationPct)),
+    // Both fall back to the admin-editable shared default (like
+    // savingsPayoutIntervalMonths/remortgageGapMonths below) rather than a
+    // literal or the current form's value, now that these are real fields on
+    // MortgageDefaults instead of pure FE literals.
+    fixedMonthlyOverpayment: String(inputs.fixedMonthlyOverpayment ?? defaults.fixedMonthlyOverpayment),
+    targetAllowanceUtilizationPct: String(inputs.targetAllowanceUtilizationPct ?? defaults.targetAllowanceUtilizationPct),
 
     bankedSavingsDestination: inputs.bankedSavingsDestination ?? currentForm.bankedSavingsDestination,
     // 0 would be an invalid value here (validate_inputs rejects <= 0), not a
     // no-op, so fall back to the engine's real default instead.
-    savingsPayoutIntervalYears: String(inputs.savingsPayoutIntervalYears ?? defaults.savingsPayoutIntervalYears),
+    savingsPayoutIntervalMonths: String(inputs.savingsPayoutIntervalMonths ?? defaults.savingsPayoutIntervalMonths),
     rateAfterFixedTermMode: inputs.rateAfterFixedTermMode ?? currentForm.rateAfterFixedTermMode,
     remortgageGapMonths: String(inputs.remortgageGapMonths ?? defaults.remortgageGapMonths),
 

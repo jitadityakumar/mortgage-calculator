@@ -33,7 +33,7 @@ export interface FormState {
   targetAllowanceUtilizationPct: string;
 
   bankedSavingsDestination: BankedSavingsDestination;
-  savingsPayoutIntervalYears: string;
+  savingsPayoutIntervalMonths: string;
   rateAfterFixedTermMode: RateAfterFixedTermMode;
   remortgageGapMonths: string;
 
@@ -62,9 +62,9 @@ export interface FormState {
  * /api/v1/defaults response — the single source of truth for every
  * calculation-fallback default (see backend/app/engine/defaults.json).
  * Fields below with no calculation-default equivalent (propertyValue,
- * currentRent, monthlySavings, serviceCharge, fixedMonthlyOverpayment,
- * targetAllowanceUtilizationPct, rateAfterFixedTermMode, showAdvanced) are
- * pure UI demo/convenience values, kept as literals here. `depositSavings`
+ * currentRent, monthlySavings, serviceCharge, rateAfterFixedTermMode,
+ * showAdvanced) are pure UI demo/convenience values, kept as literals here.
+ * `depositSavings`
  * and `isFirstTimeBuyer` come from `defaults` (admin-editable, see
  * AdminPage.tsx) rather than being literals here, unlike the fields above.
  * `deposit` is computed to match: when `defaults.deriveDepositFromSavings`
@@ -97,11 +97,11 @@ export function buildDefaultFormState(defaults: MortgageDefaults): FormState {
     serviceCharge: '500',
 
     monthlyOverpaymentAmountMode: defaults.monthlyOverpaymentAmountMode,
-    fixedMonthlyOverpayment: '300',
-    targetAllowanceUtilizationPct: '50',
+    fixedMonthlyOverpayment: String(defaults.fixedMonthlyOverpayment),
+    targetAllowanceUtilizationPct: String(defaults.targetAllowanceUtilizationPct),
 
     bankedSavingsDestination: defaults.bankedSavingsDestination,
-    savingsPayoutIntervalYears: String(defaults.savingsPayoutIntervalYears),
+    savingsPayoutIntervalMonths: String(defaults.savingsPayoutIntervalMonths),
     rateAfterFixedTermMode: 'remortgageToNewFixed',
     remortgageGapMonths: String(defaults.remortgageGapMonths),
 

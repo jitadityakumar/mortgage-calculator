@@ -136,8 +136,8 @@ Frontend (React/Vite, src/)          Backend (FastAPI, backend/app/)
   lump-sum payouts silently stopped firing under `stayOnVariable`), and was
   deliberately un-coupled. Payout *timing* differs by mode: `remortgageToNewFixed`
   pays out the month immediately after every fixed-deal boundary;
-  `stayOnVariable` pays out periodically every `savingsPayoutIntervalYears` (accepts
-  fractional years), first payout when the initial fixed term ends.
+  `stayOnVariable` pays out periodically every `savingsPayoutIntervalMonths` (a
+  whole number of months), first payout when the initial fixed term ends.
 - **Money conservation is a real invariant, tested explicitly**: pool money freed up
   each month must always equal `totalOverpaid + unallocatedSavingsPot` — nothing
   should vanish, including at loop-exit edge cases like an overshoot on the payoff

@@ -46,7 +46,7 @@ export interface MortgageInputs {
   targetAllowanceUtilizationPct?: number;
 
   bankedSavingsDestination?: BankedSavingsDestination;
-  savingsPayoutIntervalYears?: number;
+  savingsPayoutIntervalMonths?: number;
   rateAfterFixedTermMode?: RateAfterFixedTermMode;
   remortgageGapMonths?: number;
 
@@ -120,7 +120,7 @@ export interface MortgageDefaults {
   config: MortgageConfig;
   variableRateAnnualPct: number;
   remortgageGapMonths: number;
-  savingsPayoutIntervalYears: number;
+  savingsPayoutIntervalMonths: number;
   fixedRateAnnualPct: number;
   fixedTermMonths: number;
   totalTermMonths: number;
@@ -136,6 +136,8 @@ export interface MortgageDefaults {
   deriveDepositFromSavings: boolean;
   overpaymentMode: OverpaymentMode;
   monthlyOverpaymentAmountMode: MonthlyOverpaymentAmountMode;
+  fixedMonthlyOverpayment: number;
+  targetAllowanceUtilizationPct: number;
   bankedSavingsDestination: BankedSavingsDestination;
   /** ISO timestamp of the last admin edit; null when serving the shipped
    * defaults.json values (never persisted/edited). */

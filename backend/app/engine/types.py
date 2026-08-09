@@ -50,7 +50,7 @@ class MortgageDefaults(BaseModel):
     config: MortgageConfig
     variableRateAnnualPct: float
     remortgageGapMonths: float
-    savingsPayoutIntervalYears: float
+    savingsPayoutIntervalMonths: float
     fixedRateAnnualPct: float
     fixedTermMonths: float
     totalTermMonths: float
@@ -68,6 +68,8 @@ class MortgageDefaults(BaseModel):
     deriveDepositFromSavings: bool
     overpaymentMode: OverpaymentMode
     monthlyOverpaymentAmountMode: MonthlyOverpaymentAmountMode
+    fixedMonthlyOverpayment: float
+    targetAllowanceUtilizationPct: float
     bankedSavingsDestination: BankedSavingsDestination
     # None when loaded from defaults.json (load_seed_defaults()) rather than
     # the DB — the seed file itself was never "updated".
@@ -100,7 +102,7 @@ class MortgageInputs(BaseModel):
     targetAllowanceUtilizationPct: Optional[float] = None
 
     bankedSavingsDestination: Optional[BankedSavingsDestination] = None
-    savingsPayoutIntervalYears: Optional[float] = None
+    savingsPayoutIntervalMonths: Optional[float] = None
     rateAfterFixedTermMode: Optional[RateAfterFixedTermMode] = None
     remortgageGapMonths: Optional[float] = None
 

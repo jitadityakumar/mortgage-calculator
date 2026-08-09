@@ -21,13 +21,15 @@ interface DefaultsFormState {
   isFirstTimeBuyer: boolean;
   deriveDepositFromSavings: boolean;
   fixedRateAnnualPct: string;
-  fixedTermMonths: string;
+  fixedTermYears: string;
   variableRateAnnualPct: string;
-  totalTermMonths: string;
+  totalTermYears: string;
   remortgageGapMonths: string;
-  savingsPayoutIntervalYears: string;
+  savingsPayoutIntervalMonths: string;
   overpaymentMode: OverpaymentMode;
   monthlyOverpaymentAmountMode: MonthlyOverpaymentAmountMode;
+  fixedMonthlyOverpayment: string;
+  targetAllowanceUtilizationPct: string;
   bankedSavingsDestination: BankedSavingsDestination;
   annualOverpaymentAllowancePct: string;
   allowanceBasis: AllowanceBasis;
@@ -44,13 +46,15 @@ function toFormState(d: MortgageDefaults): DefaultsFormState {
     isFirstTimeBuyer: d.isFirstTimeBuyer,
     deriveDepositFromSavings: d.deriveDepositFromSavings,
     fixedRateAnnualPct: String(d.fixedRateAnnualPct),
-    fixedTermMonths: String(d.fixedTermMonths),
+    fixedTermYears: String(d.fixedTermMonths / 12),
     variableRateAnnualPct: String(d.variableRateAnnualPct),
-    totalTermMonths: String(d.totalTermMonths),
+    totalTermYears: String(d.totalTermMonths / 12),
     remortgageGapMonths: String(d.remortgageGapMonths),
-    savingsPayoutIntervalYears: String(d.savingsPayoutIntervalYears),
+    savingsPayoutIntervalMonths: String(d.savingsPayoutIntervalMonths),
     overpaymentMode: d.overpaymentMode,
     monthlyOverpaymentAmountMode: d.monthlyOverpaymentAmountMode,
+    fixedMonthlyOverpayment: String(d.fixedMonthlyOverpayment),
+    targetAllowanceUtilizationPct: String(d.targetAllowanceUtilizationPct),
     bankedSavingsDestination: d.bankedSavingsDestination,
     annualOverpaymentAllowancePct: String(d.config.annualOverpaymentAllowancePct),
     allowanceBasis: d.config.allowanceBasis,
@@ -68,13 +72,15 @@ function toMortgageDefaults(form: DefaultsFormState): MortgageDefaults {
     isFirstTimeBuyer: form.isFirstTimeBuyer,
     deriveDepositFromSavings: form.deriveDepositFromSavings,
     fixedRateAnnualPct: parseNum(form.fixedRateAnnualPct),
-    fixedTermMonths: parseNum(form.fixedTermMonths),
+    fixedTermMonths: Math.round(parseNum(form.fixedTermYears) * 12),
     variableRateAnnualPct: parseNum(form.variableRateAnnualPct),
-    totalTermMonths: parseNum(form.totalTermMonths),
+    totalTermMonths: Math.round(parseNum(form.totalTermYears) * 12),
     remortgageGapMonths: parseNum(form.remortgageGapMonths),
-    savingsPayoutIntervalYears: parseNum(form.savingsPayoutIntervalYears),
+    savingsPayoutIntervalMonths: Math.round(parseNum(form.savingsPayoutIntervalMonths)),
     overpaymentMode: form.overpaymentMode,
     monthlyOverpaymentAmountMode: form.monthlyOverpaymentAmountMode,
+    fixedMonthlyOverpayment: parseNum(form.fixedMonthlyOverpayment),
+    targetAllowanceUtilizationPct: parseNum(form.targetAllowanceUtilizationPct),
     bankedSavingsDestination: form.bankedSavingsDestination,
     config: {
       annualOverpaymentAllowancePct: parseNum(form.annualOverpaymentAllowancePct),
@@ -236,9 +242,9 @@ export function AdminPage() {
               />
               <NumberField
                 label="Fixed term"
-                suffix="months"
-                value={form.fixedTermMonths}
-                onChange={(v) => update('fixedTermMonths', v)}
+                suffix="years"
+                value={form.fixedTermYears}
+                onChange={(v) => update('fixedTermYears', v)}
                 step="1"
               />
               <NumberField
@@ -250,9 +256,9 @@ export function AdminPage() {
               />
               <NumberField
                 label="Total mortgage term"
-                suffix="months"
-                value={form.totalTermMonths}
-                onChange={(v) => update('totalTermMonths', v)}
+                suffix="years"
+                value={form.totalTermYears}
+                onChange={(v) => update('totalTermYears', v)}
                 step="1"
               />
               <NumberField
@@ -265,10 +271,11 @@ export function AdminPage() {
               />
               <NumberField
                 label="Savings payout interval"
-                suffix="years"
-                value={form.savingsPayoutIntervalYears}
-                onChange={(v) => update('savingsPayoutIntervalYears', v)}
-                step="0.25"
+                suffix="months"
+                value={form.savingsPayoutIntervalMonths}
+                onChange={(v) => update('savingsPayoutIntervalMonths', v)}
+                step="1"
+                min="1"
               />
               <label className="field">
                 <span className="field-label">When you overpay, it should...</span>
@@ -293,6 +300,23 @@ export function AdminPage() {
                   <option value="auto">Auto (paced to the allowance)</option>
                 </select>
               </label>
+              <NumberField
+                label="Fixed monthly overpayment"
+                prefix="£"
+                value={form.fixedMonthlyOverpayment}
+                onChange={(v) => update('fixedMonthlyOverpayment', v)}
+                step="50"
+                hint="Used when 'Monthly overpayment amount' is 'Fixed amount' — also the calculator's initial pre-fill for that field."
+              />
+              <NumberField
+                label="Target allowance utilization"
+                suffix="%"
+                value={form.targetAllowanceUtilizationPct}
+                onChange={(v) => update('targetAllowanceUtilizationPct', v)}
+                step="5"
+                min="0"
+                hint="Used when 'Monthly overpayment amount' is 'Auto' — also the calculator's initial pre-fill for that field."
+              />
               <label className="field">
                 <span className="field-label">Banked savings destination</span>
                 <select

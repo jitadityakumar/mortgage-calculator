@@ -35,7 +35,7 @@ def validate_inputs(inputs: MortgageInputs) -> list[str]:
         and inputs.fixedTermMonths > inputs.totalTermMonths
     ):
         issues.append("Fixed term cannot be longer than the total mortgage term.")
-    if inputs.fixedMonthlyOverpayment is not None and inputs.fixedMonthlyOverpayment < 0:
+    if inputs.fixedMonthlyOverpayment < 0:
         issues.append("Fixed monthly overpayment cannot be negative.")
     if inputs.monthlySavings is not None and inputs.monthlySavings < 0:
         issues.append("Monthly savings cannot be negative.")
@@ -43,16 +43,16 @@ def validate_inputs(inputs: MortgageInputs) -> list[str]:
         issues.append("Current rent cannot be negative.")
     if inputs.serviceCharge is not None and inputs.serviceCharge < 0:
         issues.append("Service charge cannot be negative.")
-    if inputs.targetAllowanceUtilizationPct is not None and (
-        inputs.targetAllowanceUtilizationPct < 0 or inputs.targetAllowanceUtilizationPct > 100
-    ):
+    if inputs.targetAllowanceUtilizationPct < 0 or inputs.targetAllowanceUtilizationPct > 100:
         issues.append("Target allowance utilization must be between 0 and 100%.")
     if inputs.remortgageGapMonths is not None and (
         not _is_integer(inputs.remortgageGapMonths) or inputs.remortgageGapMonths < 0
     ):
         issues.append("Remortgage gap must be a non-negative whole number of months.")
-    if inputs.savingsPayoutIntervalYears is not None and inputs.savingsPayoutIntervalYears <= 0:
-        issues.append("Savings payout interval must be greater than 0 years.")
+    if inputs.savingsPayoutIntervalMonths is not None and (
+        not _is_integer(inputs.savingsPayoutIntervalMonths) or inputs.savingsPayoutIntervalMonths <= 0
+    ):
+        issues.append("Savings payout interval must be a positive whole number of months.")
     for i, lump in enumerate(inputs.lumpSums or []):
         if not (lump.amount > 0):
             issues.append(f"Lump sum #{i + 1}: amount must be greater than 0.")
@@ -92,8 +92,12 @@ def validate_defaults(d: MortgageDefaults) -> list[str]:
         issues.append("Default fixed term cannot be longer than the default total mortgage term.")
     if not _is_integer(d.remortgageGapMonths) or d.remortgageGapMonths < 0:
         issues.append("Default remortgage gap must be a non-negative whole number of months.")
-    if d.savingsPayoutIntervalYears <= 0:
-        issues.append("Default savings payout interval must be greater than 0 years.")
+    if not _is_integer(d.savingsPayoutIntervalMonths) or d.savingsPayoutIntervalMonths <= 0:
+        issues.append("Default savings payout interval must be a positive whole number of months.")
+    if d.fixedMonthlyOverpayment < 0:
+        issues.append("Default fixed monthly overpayment cannot be negative.")
+    if not (0 <= d.targetAllowanceUtilizationPct <= 100):
+        issues.append("Default target allowance utilization must be between 0 and 100%.")
     if not (0 <= d.config.annualOverpaymentAllowancePct <= 100):
         issues.append("Default annual overpayment allowance must be between 0 and 100%.")
     if not (0 <= d.config.ercRateOnExcessPct <= 100):

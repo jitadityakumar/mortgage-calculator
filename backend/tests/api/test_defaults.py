@@ -45,6 +45,8 @@ def test_get_defaults_on_fresh_db_returns_shipped_values(client: TestClient) -> 
     body = response.json()
     assert body["deposit"] == SEED.deposit
     assert body["fixedRateAnnualPct"] == SEED.fixedRateAnnualPct
+    assert body["fixedMonthlyOverpayment"] == SEED.fixedMonthlyOverpayment
+    assert body["targetAllowanceUtilizationPct"] == SEED.targetAllowanceUtilizationPct
 
 
 def test_put_defaults_persists_and_is_reflected_by_later_get(client: TestClient) -> None:
@@ -65,6 +67,24 @@ def test_put_defaults_changes_what_partial_calculate_resolves_to(client: TestCli
     response = client.post("/api/v1/calculate", json={"propertyValue": 250_000})
     assert response.status_code == 200
     assert response.json()["principal"] == 250_000 - 12345
+
+
+def test_put_defaults_changes_what_partial_calculate_resolves_to_for_fixed_overpayment(
+    client: TestClient,
+) -> None:
+    updated = {
+        **SEED.model_dump(exclude={"updatedAt"}),
+        "monthlyOverpaymentAmountMode": "fixed",
+        "fixedMonthlyOverpayment": 999,
+    }
+    client.put("/api/v1/defaults", json=updated)
+
+    response = client.post("/api/v1/calculate", json={"propertyValue": 250_000})
+    assert response.status_code == 200
+    # First month's overpayment is the fixed amount itself (before any
+    # allowance/ERC capping could reduce it) — proves the admin-edited
+    # default flowed all the way into the engine, not just the response echo.
+    assert response.json()["schedule"][0]["overpaymentPaid"] == 999
 
 
 def test_put_defaults_changes_what_saved_calculation_resolves_to(client: TestClient) -> None:
@@ -99,6 +119,8 @@ def test_post_reset_defaults_restores_shipped_values(client: TestClient) -> None
         {"totalTermMonths": 0},
         {"fixedTermMonths": 400, "totalTermMonths": 300},
         {"depositSavings": -1},
+        {"fixedMonthlyOverpayment": -1},
+        {"targetAllowanceUtilizationPct": 101},
     ],
 )
 def test_put_defaults_rejects_invalid_values(client: TestClient, override: dict) -> None:

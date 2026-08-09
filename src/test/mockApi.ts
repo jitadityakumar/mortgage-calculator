@@ -24,7 +24,7 @@ export const MOCK_DEFAULTS: MortgageDefaults = {
   },
   variableRateAnnualPct: 7.25,
   remortgageGapMonths: 2,
-  savingsPayoutIntervalYears: 1,
+  savingsPayoutIntervalMonths: 6,
   fixedRateAnnualPct: 4.5,
   fixedTermMonths: 60,
   totalTermMonths: 300,
@@ -34,6 +34,8 @@ export const MOCK_DEFAULTS: MortgageDefaults = {
   deriveDepositFromSavings: true,
   overpaymentMode: 'reduceTerm',
   monthlyOverpaymentAmountMode: 'auto',
+  fixedMonthlyOverpayment: 300,
+  targetAllowanceUtilizationPct: 50,
   bankedSavingsDestination: 'lumpSumEachCycle',
   updatedAt: null,
 };
