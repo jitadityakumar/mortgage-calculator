@@ -170,6 +170,12 @@ describe('AdminPage', () => {
 
     await screen.findByText('Saved.');
     expect((screen.getByLabelText('Once the fixed deal ends') as HTMLSelectElement).value).toBe('stayOnVariable');
+
+    await user.selectOptions(screen.getByLabelText('Once the fixed deal ends'), 'hybrid');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await screen.findByText('Saved.');
+    expect((screen.getByLabelText('Once the fixed deal ends') as HTMLSelectElement).value).toBe('hybrid');
   });
 
   it('does not reset when the confirmation is declined', async () => {
