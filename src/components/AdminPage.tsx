@@ -27,6 +27,9 @@ interface DefaultsFormState {
   remortgageGapMonths: string;
   savingsPayoutIntervalMonths: string;
   overpaymentMode: OverpaymentMode;
+  currentRent: string;
+  monthlySavings: string;
+  serviceCharge: string;
   monthlyOverpaymentAmountMode: MonthlyOverpaymentAmountMode;
   fixedMonthlyOverpayment: string;
   targetAllowanceUtilizationPct: string;
@@ -52,6 +55,9 @@ function toFormState(d: MortgageDefaults): DefaultsFormState {
     remortgageGapMonths: String(d.remortgageGapMonths),
     savingsPayoutIntervalMonths: String(d.savingsPayoutIntervalMonths),
     overpaymentMode: d.overpaymentMode,
+    currentRent: String(d.currentRent),
+    monthlySavings: String(d.monthlySavings),
+    serviceCharge: String(d.serviceCharge),
     monthlyOverpaymentAmountMode: d.monthlyOverpaymentAmountMode,
     fixedMonthlyOverpayment: String(d.fixedMonthlyOverpayment),
     targetAllowanceUtilizationPct: String(d.targetAllowanceUtilizationPct),
@@ -78,6 +84,9 @@ function toMortgageDefaults(form: DefaultsFormState): MortgageDefaults {
     remortgageGapMonths: parseNum(form.remortgageGapMonths),
     savingsPayoutIntervalMonths: Math.round(parseNum(form.savingsPayoutIntervalMonths)),
     overpaymentMode: form.overpaymentMode,
+    currentRent: parseNum(form.currentRent),
+    monthlySavings: parseNum(form.monthlySavings),
+    serviceCharge: parseNum(form.serviceCharge),
     monthlyOverpaymentAmountMode: form.monthlyOverpaymentAmountMode,
     fixedMonthlyOverpayment: parseNum(form.fixedMonthlyOverpayment),
     targetAllowanceUtilizationPct: parseNum(form.targetAllowanceUtilizationPct),
@@ -268,6 +277,30 @@ export function AdminPage() {
           <fieldset className="card">
             <legend>Overpayments</legend>
             <div className="field-grid">
+              <NumberField
+                label="Current rent"
+                prefix="£"
+                value={form.currentRent}
+                onChange={(v) => update('currentRent', v)}
+                step="10"
+                hint="Starting value for the calculator's 'Current rent' field."
+              />
+              <NumberField
+                label="Current monthly savings"
+                prefix="£"
+                value={form.monthlySavings}
+                onChange={(v) => update('monthlySavings', v)}
+                step="10"
+                hint="Starting value for the calculator's 'Current monthly savings' field."
+              />
+              <NumberField
+                label="Service charge"
+                prefix="£"
+                value={form.serviceCharge}
+                onChange={(v) => update('serviceCharge', v)}
+                step="10"
+                hint="Starting value for the calculator's 'Service charge' field."
+              />
               <label className="field">
                 <span className="field-label">When you overpay, it should...</span>
                 <select

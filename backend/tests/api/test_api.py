@@ -23,6 +23,13 @@ def test_calculate_returns_full_result() -> None:
             "fixedTermMonths": 300,
             "variableRateAnnualPct": 5,
             "totalTermMonths": 300,
+            # Explicit zero pool: currentRent/monthlySavings/serviceCharge
+            # otherwise resolve from the admin-editable defaults, which would
+            # inject a real overpayment pool and pay this off early — this
+            # test wants a plain, full-length schedule.
+            "currentRent": 0,
+            "monthlySavings": 0,
+            "serviceCharge": 0,
         },
     )
     assert response.status_code == 200
@@ -83,7 +90,10 @@ def test_calculate_with_only_property_value_uses_defaults() -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["principal"] == 250_000 - DEFAULT_DEPOSIT
-    assert len(body["schedule"]) == 300
+    # Every other field defaults too, including the rent+savings pool and
+    # 'auto' overpayment mode — real overpayments pay this off well before
+    # the default 300-month term.
+    assert len(body["schedule"]) == 61
 
 
 def test_calculate_with_property_value_and_deposit_only_uses_defaults_for_rest() -> None:
@@ -91,7 +101,7 @@ def test_calculate_with_property_value_and_deposit_only_uses_defaults_for_rest()
     assert response.status_code == 200
     body = response.json()
     assert body["principal"] == 200_000
-    assert len(body["schedule"]) == 300
+    assert len(body["schedule"]) == 67
 
 
 def test_get_defaults_returns_the_shared_default_values() -> None:

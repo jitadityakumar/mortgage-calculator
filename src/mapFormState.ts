@@ -78,13 +78,12 @@ export function mapInputsToFormState(
     totalTermYears: String(inputs.totalTermMonths / 12),
 
     overpaymentMode: inputs.overpaymentMode ?? currentForm.overpaymentMode,
-    // 0 is the correct fallback here: these three are additive inputs to the
-    // rent+savings pool, and "not set" and "set to 0" are the same no-op
-    // contribution — unlike savingsPayoutIntervalMonths/remortgageGapMonths
-    // below, where 0 is either invalid or a different real value.
-    currentRent: String(inputs.currentRent ?? 0),
-    monthlySavings: String(inputs.monthlySavings ?? 0),
-    serviceCharge: String(inputs.serviceCharge ?? 0),
+    // Fall back to the admin-editable shared default (like
+    // fixedMonthlyOverpayment/savingsPayoutIntervalMonths below) now that
+    // these are real fields on MortgageDefaults instead of pure FE literals.
+    currentRent: String(inputs.currentRent ?? defaults.currentRent),
+    monthlySavings: String(inputs.monthlySavings ?? defaults.monthlySavings),
+    serviceCharge: String(inputs.serviceCharge ?? defaults.serviceCharge),
 
     monthlyOverpaymentAmountMode: inputs.monthlyOverpaymentAmountMode ?? currentForm.monthlyOverpaymentAmountMode,
     // Both fall back to the admin-editable shared default (like

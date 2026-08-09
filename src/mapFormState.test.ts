@@ -23,6 +23,9 @@ const TEST_DEFAULTS: MortgageDefaults = {
   isFirstTimeBuyer: true,
   deriveDepositFromSavings: true,
   overpaymentMode: 'reduceTerm',
+  currentRent: 2300,
+  monthlySavings: 2000,
+  serviceCharge: 500,
   monthlyOverpaymentAmountMode: 'auto',
   fixedMonthlyOverpayment: 300,
   targetAllowanceUtilizationPct: 50,
@@ -85,11 +88,9 @@ describe('mapInputsToFormState / mapFormStateToInputs round trip', () => {
     expect(form.remortgageGapMonths).toBe(String(TEST_DEFAULTS.remortgageGapMonths));
     expect(form.fixedMonthlyOverpayment).toBe(String(TEST_DEFAULTS.fixedMonthlyOverpayment));
     expect(form.targetAllowanceUtilizationPct).toBe(String(TEST_DEFAULTS.targetAllowanceUtilizationPct));
-
-    // 0 IS the correct no-op fallback for these — additive pool inputs.
-    expect(form.currentRent).toBe('0');
-    expect(form.monthlySavings).toBe('0');
-    expect(form.serviceCharge).toBe('0');
+    expect(form.currentRent).toBe(String(TEST_DEFAULTS.currentRent));
+    expect(form.monthlySavings).toBe(String(TEST_DEFAULTS.monthlySavings));
+    expect(form.serviceCharge).toBe(String(TEST_DEFAULTS.serviceCharge));
   });
 
   it('does not let an explicit-null config field (as the API actually returns for unset fields) clobber the shared defaults', () => {

@@ -67,6 +67,9 @@ class MortgageDefaults(BaseModel):
     isFirstTimeBuyer: bool
     deriveDepositFromSavings: bool
     overpaymentMode: OverpaymentMode
+    currentRent: float
+    monthlySavings: float
+    serviceCharge: float
     monthlyOverpaymentAmountMode: MonthlyOverpaymentAmountMode
     fixedMonthlyOverpayment: float
     targetAllowanceUtilizationPct: float

@@ -114,6 +114,12 @@ def resolve_mortgage_inputs(
         updates["totalTermMonths"] = d.totalTermMonths
     if inputs.overpaymentMode is None:
         updates["overpaymentMode"] = d.overpaymentMode
+    if inputs.currentRent is None:
+        updates["currentRent"] = d.currentRent
+    if inputs.monthlySavings is None:
+        updates["monthlySavings"] = d.monthlySavings
+    if inputs.serviceCharge is None:
+        updates["serviceCharge"] = d.serviceCharge
     if inputs.monthlyOverpaymentAmountMode is None:
         updates["monthlyOverpaymentAmountMode"] = d.monthlyOverpaymentAmountMode
     if inputs.fixedMonthlyOverpayment is None:

@@ -133,6 +133,31 @@ describe('AdminPage', () => {
     expect(getInputForLabel('Target allowance utilization').value).toBe('75');
   });
 
+  it('edits current rent, monthly savings, and service charge, and saves', async () => {
+    const user = userEvent.setup();
+    await renderAdminPage();
+
+    expect(getInputForLabel('Current rent').value).toBe('2300');
+    expect(getInputForLabel('Current monthly savings').value).toBe('2000');
+    expect(getInputForLabel('Service charge').value).toBe('500');
+
+    const rentInput = getInputForLabel('Current rent');
+    await user.clear(rentInput);
+    await user.type(rentInput, '1800');
+    const savingsInput = getInputForLabel('Current monthly savings');
+    await user.clear(savingsInput);
+    await user.type(savingsInput, '1500');
+    const serviceChargeInput = getInputForLabel('Service charge');
+    await user.clear(serviceChargeInput);
+    await user.type(serviceChargeInput, '250');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await screen.findByText('Saved.');
+    expect(getInputForLabel('Current rent').value).toBe('1800');
+    expect(getInputForLabel('Current monthly savings').value).toBe('1500');
+    expect(getInputForLabel('Service charge').value).toBe('250');
+  });
+
   it('does not reset when the confirmation is declined', async () => {
     const user = userEvent.setup();
     await renderAdminPage();

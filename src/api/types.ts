@@ -135,6 +135,9 @@ export interface MortgageDefaults {
   isFirstTimeBuyer: boolean;
   deriveDepositFromSavings: boolean;
   overpaymentMode: OverpaymentMode;
+  currentRent: number;
+  monthlySavings: number;
+  serviceCharge: number;
   monthlyOverpaymentAmountMode: MonthlyOverpaymentAmountMode;
   fixedMonthlyOverpayment: number;
   targetAllowanceUtilizationPct: number;

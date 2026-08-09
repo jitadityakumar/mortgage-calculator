@@ -62,8 +62,8 @@ export interface FormState {
  * /api/v1/defaults response — the single source of truth for every
  * calculation-fallback default (see backend/app/engine/defaults.json).
  * Fields below with no calculation-default equivalent (propertyValue,
- * currentRent, monthlySavings, serviceCharge, rateAfterFixedTermMode,
- * showAdvanced) are pure UI demo/convenience values, kept as literals here.
+ * rateAfterFixedTermMode, showAdvanced) are pure UI demo/convenience values,
+ * kept as literals here.
  * `depositSavings`
  * and `isFirstTimeBuyer` come from `defaults` (admin-editable, see
  * AdminPage.tsx) rather than being literals here, unlike the fields above.
@@ -92,9 +92,9 @@ export function buildDefaultFormState(defaults: MortgageDefaults): FormState {
     totalTermYears: String(defaults.totalTermMonths / 12),
 
     overpaymentMode: defaults.overpaymentMode,
-    currentRent: '2300',
-    monthlySavings: '2000',
-    serviceCharge: '500',
+    currentRent: String(defaults.currentRent),
+    monthlySavings: String(defaults.monthlySavings),
+    serviceCharge: String(defaults.serviceCharge),
 
     monthlyOverpaymentAmountMode: defaults.monthlyOverpaymentAmountMode,
     fixedMonthlyOverpayment: String(defaults.fixedMonthlyOverpayment),

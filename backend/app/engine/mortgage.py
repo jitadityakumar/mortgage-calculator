@@ -77,9 +77,7 @@ def calculate_mortgage(inputs: MortgageInputs, defaults: Optional[MortgageDefaul
     target_utilization_pct = inputs.targetAllowanceUtilizationPct
     monthly_budget_pool_pence = max(
         0,
-        pounds_to_pence(
-            (inputs.currentRent or 0) + (inputs.monthlySavings or 0) - (inputs.serviceCharge or 0)
-        ),
+        pounds_to_pence(inputs.currentRent + inputs.monthlySavings - inputs.serviceCharge),
     )
 
     rate_after_fixed_term_mode = inputs.rateAfterFixedTermMode or "stayOnVariable"

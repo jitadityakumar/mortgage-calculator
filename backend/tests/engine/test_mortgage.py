@@ -32,6 +32,14 @@ def base_inputs(overrides: dict | None = None) -> MortgageInputs:
         "fixedTermMonths": 300,
         "variableRateAnnualPct": 5,
         "totalTermMonths": 300,
+        # Explicit zero pool: currentRent/monthlySavings/serviceCharge now
+        # resolve from the admin-editable defaults (like fixedMonthlyOverpayment)
+        # when unset, which would otherwise inject a real overpayment pool into
+        # every "plain loan" test below. Tests that want a real pool override
+        # these explicitly.
+        "currentRent": 0,
+        "monthlySavings": 0,
+        "serviceCharge": 0,
     }
     if overrides:
         data.update(overrides)
@@ -863,7 +871,10 @@ def test_calculate_fills_in_defaults_when_only_property_value_is_given():
     # Flat default deposit (DEFAULT_DEPOSIT, from defaults.json) -> principal
     # is propertyValue minus that flat amount, not a percentage.
     assert result.principal == 250_000 - DEFAULT_DEPOSIT
-    assert len(result.schedule) == 300
+    # Every other field defaults too, including the rent+savings pool and
+    # 'auto' overpayment mode — real overpayments pay this off well before
+    # the default 300-month term.
+    assert len(result.schedule) == 61
 
 
 def test_calculate_only_fills_defaults_for_fields_left_unset():

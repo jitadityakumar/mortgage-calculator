@@ -47,6 +47,9 @@ def test_get_defaults_on_fresh_db_returns_shipped_values(client: TestClient) -> 
     assert body["fixedRateAnnualPct"] == SEED.fixedRateAnnualPct
     assert body["fixedMonthlyOverpayment"] == SEED.fixedMonthlyOverpayment
     assert body["targetAllowanceUtilizationPct"] == SEED.targetAllowanceUtilizationPct
+    assert body["currentRent"] == SEED.currentRent
+    assert body["monthlySavings"] == SEED.monthlySavings
+    assert body["serviceCharge"] == SEED.serviceCharge
 
 
 def test_put_defaults_persists_and_is_reflected_by_later_get(client: TestClient) -> None:
@@ -87,6 +90,32 @@ def test_put_defaults_changes_what_partial_calculate_resolves_to_for_fixed_overp
     assert response.json()["schedule"][0]["overpaymentPaid"] == 999
 
 
+def test_put_defaults_changes_what_partial_calculate_resolves_to_for_the_rent_savings_pool(
+    client: TestClient,
+) -> None:
+    updated = {
+        **SEED.model_dump(exclude={"updatedAt"}),
+        "monthlyOverpaymentAmountMode": "fixed",
+        "fixedMonthlyOverpayment": 0,
+        "currentRent": 1200,
+        "monthlySavings": 300,
+        "serviceCharge": 100,
+    }
+    client.put("/api/v1/defaults", json=updated)
+
+    # Fixed monthly overpayment is 0, so the whole pool (1200 + 300 - 100 =
+    # 1400) left over after the scheduled payment banks into savings instead
+    # — proves all three admin-edited defaults flowed into the engine's pool,
+    # not just the response echo.
+    response = client.post("/api/v1/calculate", json={"propertyValue": 250_000})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["schedule"][0]["overpaymentPaid"] == 0
+    assert body["schedule"][0]["savingsAddedThisMonth"] == pytest.approx(
+        1400 - body["schedule"][0]["scheduledPayment"], abs=0.5
+    )
+
+
 def test_put_defaults_changes_what_saved_calculation_resolves_to(client: TestClient) -> None:
     updated = {**SEED.model_dump(exclude={"updatedAt"}), "deposit": 54321}
     client.put("/api/v1/defaults", json=updated)
@@ -121,6 +150,9 @@ def test_post_reset_defaults_restores_shipped_values(client: TestClient) -> None
         {"depositSavings": -1},
         {"fixedMonthlyOverpayment": -1},
         {"targetAllowanceUtilizationPct": 101},
+        {"currentRent": -1},
+        {"monthlySavings": -1},
+        {"serviceCharge": -1},
     ],
 )
 def test_put_defaults_rejects_invalid_values(client: TestClient, override: dict) -> None:
