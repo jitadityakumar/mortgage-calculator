@@ -67,10 +67,19 @@ def _would_clear_within_window_on_variable(
     fall inside the lookahead window (calculate_mortgage()'s real run still
     applies them if hybrid ends up continuing to cycle instead) — an
     acceptable approximation given lump sums are an optional, occasional
-    input, and the window is short relative to the loan's life. Also treats
-    `start_month` as a fresh allowance-year boundary rather than inheriting
-    the real mid-year allowance-used state, since annual resets happen every
-    12 months regardless of alignment.
+    input, and the window is short relative to the loan's life.
+
+    Also treats `start_month` as a fresh allowance-year boundary rather than
+    inheriting the real mid-year allowance-used state, since annual resets
+    happen every 12 months regardless of alignment. This is a one-directional
+    approximation, not a neutral one: resetting allowance_used_this_year to 0
+    can only ever make the projected auto-pacing/payout capacity *larger*
+    than the real continuation would see (real state always has some
+    allowance already consumed), so this check can never be more pessimistic
+    than reality, only more optimistic about committing. It doesn't corrupt
+    the real schedule either way — once committed, the actual loop keeps
+    running variable-forever regardless of how accurate the original
+    projection was — but a "yes" here is a slightly generous yes.
     """
     months_to_check = min(window_months, remaining_total_term_months)
     if months_to_check <= 0:

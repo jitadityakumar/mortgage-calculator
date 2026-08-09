@@ -264,12 +264,14 @@ export function OverpaymentsForm({ form, update, initialMonthlyPayment }: Overpa
           />
         )}
 
-      {form.bankedSavingsDestination === 'lumpSumEachCycle' && form.rateAfterFixedTermMode === 'remortgageToNewFixed' && (
-        <p className="field-hint">
-          Banked savings pay out automatically each time you remortgage — the month your fixed deal ends, right
-          before the follow-on/variable window below — rather than on a fixed calendar schedule.
-        </p>
-      )}
+      {form.bankedSavingsDestination === 'lumpSumEachCycle' &&
+        (form.rateAfterFixedTermMode === 'remortgageToNewFixed' || form.rateAfterFixedTermMode === 'hybrid') && (
+          <p className="field-hint">
+            Banked savings pay out automatically each time you remortgage — the month your fixed deal ends, right
+            before the follow-on/variable window below — rather than on a fixed calendar schedule
+            {form.rateAfterFixedTermMode === 'hybrid' ? ' (while hybrid is still cycling through fixed deals)' : ''}.
+          </p>
+        )}
 
       {(form.rateAfterFixedTermMode === 'remortgageToNewFixed' || form.rateAfterFixedTermMode === 'hybrid') && (
         <>

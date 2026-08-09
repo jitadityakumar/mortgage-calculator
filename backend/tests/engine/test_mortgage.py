@@ -784,6 +784,69 @@ def test_calculate_echoes_rate_after_fixed_term_mode_in_the_result():
     assert result.rateAfterFixedTermMode == "hybrid"
 
 
+def test_hybrid_commits_via_genuine_overpayment_driven_payoff_not_just_the_forced_final_month_rule():
+    # Unlike the totalTermMonths=36 tests above (where remaining_total_term_months
+    # ends up <= the fixedTermMonths lookahead window, so the engine's
+    # "always fully pay off the literal final month" rule trivially decides
+    # the check on its own), this uses a 120-month term — the remaining term
+    # at the first boundary (96 months) is nowhere near the 24-month window,
+    # so a "yes" here can only come from _would_clear_within_window_on_variable's
+    # actual per-month projection (recast payment + banked-pool payouts),
+    # genuinely exercising that logic rather than the trivial branch.
+    inputs = {
+        "totalTermMonths": 120,
+        "propertyValue": 300_000,
+        "deposit": 250_000,  # principal 50,000
+        "currentRent": 1500,  # pool comfortably above the recast payment
+        "bankedSavingsDestination": "lumpSumEachCycle",
+        "monthlyOverpaymentAmountMode": "none",
+        "savingsPayoutIntervalMonths": 6,
+    }
+    hybrid_result = calculate_mortgage(hybrid_inputs(inputs))
+    cycling_result = calculate_mortgage(cycling_inputs(inputs))
+
+    # Doesn't clear immediately on commit (this is a multi-payout payoff, not
+    # a one-shot one) — proves the periodic-payout path is actually doing
+    # the work, not just the immediate first payout alone.
+    assert hybrid_result.payoffMonth > 30
+    assert all(e.ratePct == 5 for e in hybrid_result.schedule[0:24])
+    assert all(e.ratePct == 7.25 for e in hybrid_result.schedule[24:])
+    assert [e.month for e in hybrid_result.schedule if e.isFixedPeriodBoundary] == [24]
+
+    # Contrast: plain remortgageToNewFixed re-fixes at month 27 and takes
+    # longer overall, since it keeps giving back the ERC-free variable
+    # window to a new fixed deal instead of ever committing.
+    assert cycling_result.schedule[26].ratePct == 5  # month 27: fixed again
+    assert hybrid_result.payoffMonth < cycling_result.payoffMonth
+
+
+def test_hybrid_does_not_commit_at_an_early_boundary_but_does_at_a_later_one_once_the_balance_is_low_enough():
+    # Same shape as the genuine-payoff test above, but with a smaller pool
+    # relative to the remaining term at month 24 (not enough to clear within
+    # a single 24-month window yet) — hybrid should keep cycling past the
+    # first boundary, then commit once a later boundary's shorter remaining
+    # balance brings it within reach. Proves the check re-runs at every
+    # boundary independently rather than only ever getting one shot.
+    inputs = {
+        "totalTermMonths": 120,
+        "propertyValue": 300_000,
+        "deposit": 200_000,  # principal 100,000 — too big to clear from the first boundary
+        "currentRent": 1500,
+        "bankedSavingsDestination": "lumpSumEachCycle",
+        "monthlyOverpaymentAmountMode": "none",
+        "savingsPayoutIntervalMonths": 6,
+    }
+    result = calculate_mortgage(hybrid_inputs(inputs))
+    # Still cycling: re-fixes at month 27 (26-month cycle), unlike the
+    # genuine-payoff test above where hybrid commits immediately at month 24.
+    assert result.schedule[26].ratePct == 5  # month 27: fixed again
+    boundaries = [e.month for e in result.schedule if e.isFixedPeriodBoundary]
+    assert len(boundaries) > 1, "should have kept cycling past the first boundary"
+    # Eventually commits at some later boundary and never re-fixes after it.
+    last_boundary = boundaries[-1]
+    assert all(e.ratePct == 7.25 for e in result.schedule[last_boundary:])
+
+
 # calculateMortgage — savings payout, staying on the variable rate (periodic, savingsPayoutIntervalMonths)
 
 
