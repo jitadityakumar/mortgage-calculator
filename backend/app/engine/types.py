@@ -112,6 +112,11 @@ class MortgageInputs(BaseModel):
 
     config: Optional[MortgageConfigOverrides] = None
 
+    # Full month-by-month schedule is the bulk of the response payload and
+    # unneeded for most callers (e.g. a quick affordability estimate) — only
+    # returned when explicitly requested.
+    includeSchedule: Optional[bool] = False
+
 
 class MonthlyScheduleEntry(BaseModel):
     month: int

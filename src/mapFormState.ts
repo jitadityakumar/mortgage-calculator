@@ -4,6 +4,7 @@ import type { FormState, LumpSumFormRow } from './types/formState';
 
 export function mapFormStateToInputs(form: FormState): MortgageInputs {
   return {
+    includeSchedule: true,
     propertyValue: parseNum(form.propertyValue),
     deposit: parseNum(form.deposit),
     fixedRateAnnualPct: parseNum(form.fixedRatePct),

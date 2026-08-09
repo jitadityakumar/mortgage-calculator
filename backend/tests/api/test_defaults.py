@@ -101,7 +101,7 @@ def test_put_defaults_changes_what_partial_calculate_resolves_to_for_fixed_overp
     }
     client.put("/api/v1/defaults", json=updated)
 
-    response = client.post("/api/v1/calculate", json={"propertyValue": 250_000})
+    response = client.post("/api/v1/calculate", json={"propertyValue": 250_000, "includeSchedule": True})
     assert response.status_code == 200
     # First month's overpayment is the fixed amount itself (before any
     # allowance/ERC capping could reduce it) — proves the admin-edited
@@ -126,7 +126,7 @@ def test_put_defaults_changes_what_partial_calculate_resolves_to_for_the_rent_sa
     # 1400) left over after the scheduled payment banks into savings instead
     # — proves all three admin-edited defaults flowed into the engine's pool,
     # not just the response echo.
-    response = client.post("/api/v1/calculate", json={"propertyValue": 250_000})
+    response = client.post("/api/v1/calculate", json={"propertyValue": 250_000, "includeSchedule": True})
     assert response.status_code == 200
     body = response.json()
     assert body["schedule"][0]["overpaymentPaid"] == 0
@@ -148,7 +148,7 @@ def test_put_defaults_changes_what_partial_calculate_resolves_to_for_rate_after_
     }
     client.put("/api/v1/defaults", json=updated)
 
-    response = client.post("/api/v1/calculate", json={"propertyValue": 250_000})
+    response = client.post("/api/v1/calculate", json={"propertyValue": 250_000, "includeSchedule": True})
     assert response.status_code == 200
     body = response.json()
     # Shortly after the fixed term + remortgage gap ends, the shipped

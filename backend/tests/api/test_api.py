@@ -35,6 +35,7 @@ def test_calculate_returns_full_result() -> None:
             "currentRent": 0,
             "monthlySavings": 0,
             "serviceCharge": 0,
+            "includeSchedule": True,
         },
     )
     assert response.status_code == 200
@@ -106,7 +107,7 @@ def test_compare_with_only_property_value_uses_defaults() -> None:
 
 
 def test_calculate_with_only_property_value_uses_defaults() -> None:
-    response = client.post("/api/v1/calculate", json={"propertyValue": 250_000})
+    response = client.post("/api/v1/calculate", json={"propertyValue": 250_000, "includeSchedule": True})
     assert response.status_code == 200
     body = response.json()
     # deriveDepositFromSavings is on by default, so deposit resolves to
@@ -120,7 +121,9 @@ def test_calculate_with_only_property_value_uses_defaults() -> None:
 
 
 def test_calculate_with_property_value_and_deposit_only_uses_defaults_for_rest() -> None:
-    response = client.post("/api/v1/calculate", json={"propertyValue": 250_000, "deposit": 50_000})
+    response = client.post(
+        "/api/v1/calculate", json={"propertyValue": 250_000, "deposit": 50_000, "includeSchedule": True}
+    )
     assert response.status_code == 200
     body = response.json()
     assert body["principal"] == 200_000

@@ -32,6 +32,8 @@ def reference_monthly_payment(principal: float, annual_pct: float, months: int) 
 
 def base_inputs(overrides: dict | None = None) -> MortgageInputs:
     data = {
+        # Most tests below assert on `result.schedule` directly.
+        "includeSchedule": True,
         "propertyValue": 250_000,
         "deposit": 50_000,
         "fixedRateAnnualPct": 5,
@@ -1096,7 +1098,7 @@ def test_a_zero_month_gap_means_never_leaving_the_fixed_tie_in_so_payouts_stay_a
 
 
 def test_calculate_fills_in_defaults_when_only_property_value_is_given():
-    result = calculate_mortgage(MortgageInputs(propertyValue=250_000))
+    result = calculate_mortgage(MortgageInputs(propertyValue=250_000, includeSchedule=True))
     # deriveDepositFromSavings is on by default, so deposit resolves to
     # depositSavings minus SDLT (not the flat `deposit` default) — see
     # resolve_mortgage_inputs().
@@ -1109,7 +1111,7 @@ def test_calculate_fills_in_defaults_when_only_property_value_is_given():
 
 def test_calculate_only_fills_defaults_for_fields_left_unset():
     explicit = calculate_mortgage(
-        MortgageInputs(propertyValue=250_000, deposit=50_000, fixedRateAnnualPct=5)
+        MortgageInputs(propertyValue=250_000, deposit=50_000, fixedRateAnnualPct=5, includeSchedule=True)
     )
     defaulted_deposit = calculate_mortgage(MortgageInputs(propertyValue=250_000, fixedRateAnnualPct=5))
     assert explicit.principal == 200_000

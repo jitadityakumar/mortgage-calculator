@@ -474,7 +474,7 @@ def calculate_mortgage(inputs: MortgageInputs, defaults: Optional[MortgageDefaul
         )
 
     return MortgageResult(
-        schedule=schedule,
+        schedule=schedule if inputs.includeSchedule else [],
         principal=pence_to_pounds(principal_pence),
         initialMonthlyPayment=pence_to_pounds(initial_monthly_payment_pence),
         variablePeriodMonthlyPayment=pence_to_pounds(variable_period_monthly_payment_pence),

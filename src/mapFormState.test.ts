@@ -37,6 +37,7 @@ const TEST_DEFAULTS: MortgageDefaults = {
 const DEFAULT_FORM_STATE = buildDefaultFormState(TEST_DEFAULTS);
 
 const FULL_INPUTS: MortgageInputs = {
+  includeSchedule: true,
   propertyValue: 450_000,
   deposit: 80_000,
   fixedRateAnnualPct: 4.5,

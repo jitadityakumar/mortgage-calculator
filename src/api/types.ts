@@ -51,6 +51,11 @@ export interface MortgageInputs {
   remortgageGapMonths?: number;
 
   config?: Partial<MortgageConfig>;
+
+  // Full month-by-month schedule is the bulk of the response payload and
+  // omitted by default — the frontend always wants it (charts/amortization
+  // table), so mapFormStateToInputs sets this true on every request.
+  includeSchedule?: boolean;
 }
 
 export interface MonthlyScheduleEntry {
