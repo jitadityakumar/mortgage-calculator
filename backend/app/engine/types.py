@@ -43,19 +43,37 @@ class MortgageDefaults(BaseModel):
     """The single source of truth for every default value used to fill in an
     unspecified field — for both a partial /calculate request (deposit,
     rate, term fields; see resolve_mortgage_inputs()) and the frontend's
-    form pre-fill (GET /api/v1/defaults). Backed by defaults.json."""
+    form pre-fill (GET /api/v1/defaults). Runtime values are stored in the
+    defaults_config DB table (admin-editable); defaults.json is only the
+    seed/reset target — see app.engine.config.load_seed_defaults()."""
 
     config: MortgageConfig
     variableRateAnnualPct: float
     remortgageGapMonths: float
-    savingsPayoutIntervalYears: float
+    savingsPayoutIntervalMonths: float
     fixedRateAnnualPct: float
     fixedTermMonths: float
     totalTermMonths: float
     deposit: float
+    # These three feed only the frontend's initial pre-fill (buildDefaultFormState
+    # in src/types/formState.ts) — not resolve_mortgage_inputs() or any engine
+    # calculation, since "derive deposit from savings" is a client-side UX
+    # convenience (SDLT is computed client-side), not a server-side calculation
+    # concern. depositSavings/isFirstTimeBuyer are the values the calculator
+    # starts with; deriveDepositFromSavings controls whether `deposit` above is
+    # shown as-is or replaced by depositSavings minus SDLT, both on first load
+    # and on every subsequent property value/savings/FTB change.
+    depositSavings: float
+    isFirstTimeBuyer: bool
+    deriveDepositFromSavings: bool
     overpaymentMode: OverpaymentMode
     monthlyOverpaymentAmountMode: MonthlyOverpaymentAmountMode
+    fixedMonthlyOverpayment: float
+    targetAllowanceUtilizationPct: float
     bankedSavingsDestination: BankedSavingsDestination
+    # None when loaded from defaults.json (load_seed_defaults()) rather than
+    # the DB — the seed file itself was never "updated".
+    updatedAt: Optional[str] = None
 
 
 class MortgageInputs(BaseModel):
@@ -84,7 +102,7 @@ class MortgageInputs(BaseModel):
     targetAllowanceUtilizationPct: Optional[float] = None
 
     bankedSavingsDestination: Optional[BankedSavingsDestination] = None
-    savingsPayoutIntervalYears: Optional[float] = None
+    savingsPayoutIntervalMonths: Optional[float] = None
     rateAfterFixedTermMode: Optional[RateAfterFixedTermMode] = None
     remortgageGapMonths: Optional[float] = None
 

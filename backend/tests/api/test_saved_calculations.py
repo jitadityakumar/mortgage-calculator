@@ -8,8 +8,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.db.session import Base, get_db
-from app.engine import DEFAULT_DEPOSIT
+from app.engine import load_seed_defaults
 from app.main import app
+
+DEFAULT_DEPOSIT = load_seed_defaults().deposit
 
 SAMPLE_INPUTS = {
     "propertyValue": 250_000,

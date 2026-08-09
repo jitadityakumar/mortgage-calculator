@@ -14,14 +14,20 @@ const TEST_DEFAULTS: MortgageDefaults = {
   },
   variableRateAnnualPct: 7.25,
   remortgageGapMonths: 2,
-  savingsPayoutIntervalYears: 1,
+  savingsPayoutIntervalMonths: 6,
   fixedRateAnnualPct: 4.5,
   fixedTermMonths: 60,
   totalTermMonths: 300,
   deposit: 80_000,
+  depositSavings: 90_000,
+  isFirstTimeBuyer: true,
+  deriveDepositFromSavings: true,
   overpaymentMode: 'reduceTerm',
   monthlyOverpaymentAmountMode: 'auto',
+  fixedMonthlyOverpayment: 300,
+  targetAllowanceUtilizationPct: 50,
   bankedSavingsDestination: 'lumpSumEachCycle',
+  updatedAt: null,
 };
 
 const DEFAULT_FORM_STATE = buildDefaultFormState(TEST_DEFAULTS);
@@ -41,7 +47,7 @@ const FULL_INPUTS: MortgageInputs = {
   fixedMonthlyOverpayment: 300,
   targetAllowanceUtilizationPct: 75,
   bankedSavingsDestination: 'keepAsSavings',
-  savingsPayoutIntervalYears: 2,
+  savingsPayoutIntervalMonths: 24,
   rateAfterFixedTermMode: 'stayOnVariable',
   remortgageGapMonths: 3,
   lumpSums: [{ atMonth: 12, amount: 5000 }],
@@ -73,10 +79,12 @@ describe('mapInputsToFormState / mapFormStateToInputs round trip', () => {
     };
     const form = mapInputsToFormState(minimal, DEFAULT_FORM_STATE, TEST_DEFAULTS);
 
-    // 0 would be rejected by validate_inputs (savingsPayoutIntervalYears must
+    // 0 would be rejected by validate_inputs (savingsPayoutIntervalMonths must
     // be > 0) — the real regression this test targets.
-    expect(form.savingsPayoutIntervalYears).toBe(String(TEST_DEFAULTS.savingsPayoutIntervalYears));
+    expect(form.savingsPayoutIntervalMonths).toBe(String(TEST_DEFAULTS.savingsPayoutIntervalMonths));
     expect(form.remortgageGapMonths).toBe(String(TEST_DEFAULTS.remortgageGapMonths));
+    expect(form.fixedMonthlyOverpayment).toBe(String(TEST_DEFAULTS.fixedMonthlyOverpayment));
+    expect(form.targetAllowanceUtilizationPct).toBe(String(TEST_DEFAULTS.targetAllowanceUtilizationPct));
 
     // 0 IS the correct no-op fallback for these — additive pool inputs.
     expect(form.currentRent).toBe('0');

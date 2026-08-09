@@ -46,7 +46,7 @@ export interface MortgageInputs {
   targetAllowanceUtilizationPct?: number;
 
   bankedSavingsDestination?: BankedSavingsDestination;
-  savingsPayoutIntervalYears?: number;
+  savingsPayoutIntervalMonths?: number;
   rateAfterFixedTermMode?: RateAfterFixedTermMode;
   remortgageGapMonths?: number;
 
@@ -110,20 +110,36 @@ export interface SavedCalculationDetail {
 
 /**
  * The single source of truth for default values, served by GET
- * /api/v1/defaults — backed by backend/app/engine/defaults.json. The form's
- * pre-fill (buildDefaultFormState in types/formState.ts) is built from this
- * response instead of hardcoding a second copy.
+ * /api/v1/defaults — backed by a DB row (defaults_config), admin-editable
+ * via PUT /api/v1/defaults (see AdminPage.tsx), seeded from/resettable to
+ * backend/app/engine/defaults.json. The form's pre-fill
+ * (buildDefaultFormState in types/formState.ts) is built from this response
+ * instead of hardcoding a second copy.
  */
 export interface MortgageDefaults {
   config: MortgageConfig;
   variableRateAnnualPct: number;
   remortgageGapMonths: number;
-  savingsPayoutIntervalYears: number;
+  savingsPayoutIntervalMonths: number;
   fixedRateAnnualPct: number;
   fixedTermMonths: number;
   totalTermMonths: number;
   deposit: number;
+  /** These three feed only buildDefaultFormState's initial pre-fill, not any
+   * calculation — "derive deposit from savings" is a client-side UX
+   * convenience (SDLT is computed client-side), not a backend concern.
+   * deriveDepositFromSavings also gates App.tsx's live deposit auto-fill
+   * (updateDepositDriver): when false, `deposit` is a plain user-controlled
+   * field that never recomputes as property value/savings/FTB change. */
+  depositSavings: number;
+  isFirstTimeBuyer: boolean;
+  deriveDepositFromSavings: boolean;
   overpaymentMode: OverpaymentMode;
   monthlyOverpaymentAmountMode: MonthlyOverpaymentAmountMode;
+  fixedMonthlyOverpayment: number;
+  targetAllowanceUtilizationPct: number;
   bankedSavingsDestination: BankedSavingsDestination;
+  /** ISO timestamp of the last admin edit; null when serving the shipped
+   * defaults.json values (never persisted/edited). */
+  updatedAt: string | null;
 }

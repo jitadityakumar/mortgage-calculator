@@ -176,12 +176,12 @@ export function OverpaymentsForm({ form, update, initialMonthlyPayment }: Overpa
       {form.bankedSavingsDestination === 'lumpSumEachCycle' && form.rateAfterFixedTermMode === 'stayOnVariable' && (
         <NumberField
           label="Pay out banked savings every"
-          suffix="years"
-          value={form.savingsPayoutIntervalYears}
-          onChange={(v) => update('savingsPayoutIntervalYears', v)}
-          step="0.25"
-          min="0.25"
-          hint="The first payout lands the month your fixed deal ends, then repeats on this schedule — e.g. 0.25 for every 3 months, 0.5 for every 6 months, or 1, 2, etc. for whole years."
+          suffix="months"
+          value={form.savingsPayoutIntervalMonths}
+          onChange={(v) => update('savingsPayoutIntervalMonths', v)}
+          step="1"
+          min="1"
+          hint="The first payout lands the month your fixed deal ends, then repeats on this schedule — e.g. 3 for every quarter, 6 for twice a year, or 12, 24, etc. for whole years."
         />
       )}
 

@@ -1,16 +1,14 @@
 from __future__ import annotations
 
-from .config import (
-    DEFAULT_REMORTGAGE_GAP_MONTHS,
-    DEFAULT_SAVINGS_PAYOUT_INTERVAL_YEARS,
-    resolve_config,
-    resolve_mortgage_inputs,
-)
+from typing import Optional
+
+from .config import load_seed_defaults, resolve_config, resolve_mortgage_inputs
 from .money import js_round, pence_to_pounds, pounds_to_pence
 from .types import (
     ComparisonResult,
     MonthlyScheduleEntry,
     MortgageConfig,
+    MortgageDefaults,
     MortgageInputs,
     MortgageResult,
     MortgageValidationError,
@@ -38,13 +36,18 @@ def _compute_allowance_limit_pence(balance_pence: int, original_principal_pence:
     return js_round((basis_balance * config.annualOverpaymentAllowancePct) / 100)
 
 
-def calculate_mortgage(inputs: MortgageInputs) -> MortgageResult:
-    inputs = resolve_mortgage_inputs(inputs)
+def calculate_mortgage(inputs: MortgageInputs, defaults: Optional[MortgageDefaults] = None) -> MortgageResult:
+    # `defaults` is optional so the engine stays independently callable/
+    # testable without a DB session (falls back to the shipped
+    # defaults.json); API call sites always pass the live DB defaults
+    # explicitly (app.api.calculate).
+    d = defaults or load_seed_defaults()
+    inputs = resolve_mortgage_inputs(inputs, d)
     issues = validate_inputs(inputs)
     if issues:
         raise MortgageValidationError(issues)
 
-    config = resolve_config(inputs.config)
+    config = resolve_config(inputs.config, d)
     mode = inputs.overpaymentMode
     warnings: list[str] = []
 
@@ -65,16 +68,13 @@ def calculate_mortgage(inputs: MortgageInputs) -> MortgageResult:
     savings_payout_interval_months = max(
         1,
         js_round(
-            (
-                inputs.savingsPayoutIntervalYears
-                if inputs.savingsPayoutIntervalYears is not None
-                else DEFAULT_SAVINGS_PAYOUT_INTERVAL_YEARS
-            )
-            * 12
+            inputs.savingsPayoutIntervalMonths
+            if inputs.savingsPayoutIntervalMonths is not None
+            else d.savingsPayoutIntervalMonths
         ),
     )
-    fixed_monthly_overpayment_pence = pounds_to_pence(inputs.fixedMonthlyOverpayment or 0)
-    target_utilization_pct = inputs.targetAllowanceUtilizationPct if inputs.targetAllowanceUtilizationPct is not None else 100
+    fixed_monthly_overpayment_pence = pounds_to_pence(inputs.fixedMonthlyOverpayment)
+    target_utilization_pct = inputs.targetAllowanceUtilizationPct
     monthly_budget_pool_pence = max(
         0,
         pounds_to_pence(
@@ -88,7 +88,7 @@ def calculate_mortgage(inputs: MortgageInputs) -> MortgageResult:
         and fixed_term_months > 0
         and fixed_term_months < total_term_months
     )
-    gap_months = max(0, js_round(inputs.remortgageGapMonths if inputs.remortgageGapMonths is not None else DEFAULT_REMORTGAGE_GAP_MONTHS))
+    gap_months = max(0, js_round(inputs.remortgageGapMonths if inputs.remortgageGapMonths is not None else d.remortgageGapMonths))
     cycle_length = fixed_term_months + gap_months
 
     savings_pot_pence = 0
@@ -296,8 +296,10 @@ def calculate_mortgage(inputs: MortgageInputs) -> MortgageResult:
     )
 
 
-def compare_with_and_without_overpayments(inputs: MortgageInputs) -> ComparisonResult:
-    with_overpayments = calculate_mortgage(inputs)
+def compare_with_and_without_overpayments(
+    inputs: MortgageInputs, defaults: Optional[MortgageDefaults] = None
+) -> ComparisonResult:
+    with_overpayments = calculate_mortgage(inputs, defaults)
     without_inputs = inputs.model_copy(
         update={
             "lumpSums": [],
@@ -305,7 +307,7 @@ def compare_with_and_without_overpayments(inputs: MortgageInputs) -> ComparisonR
             "bankedSavingsDestination": "keepAsSavings",
         }
     )
-    without_overpayments = calculate_mortgage(without_inputs)
+    without_overpayments = calculate_mortgage(without_inputs, defaults)
 
     return ComparisonResult(
         withOverpayments=with_overpayments,

@@ -3,12 +3,14 @@ import math
 import pytest
 
 from app.engine import (
-    DEFAULT_DEPOSIT,
     MortgageValidationError,
     calculate_mortgage,
     compare_with_and_without_overpayments,
+    load_seed_defaults,
 )
 from app.engine.types import MortgageInputs
+
+DEFAULT_DEPOSIT = load_seed_defaults().deposit
 
 
 def reference_monthly_payment(principal: float, annual_pct: float, months: int) -> float:
@@ -325,14 +327,15 @@ def test_rejects_a_negative_or_non_integer_remortgage_gap():
         calculate_mortgage(base_inputs({"remortgageGapMonths": 1.5}))
 
 
-def test_rejects_a_non_positive_savings_payout_interval_but_allows_fractional_years():
+def test_rejects_a_non_positive_or_non_integer_savings_payout_interval():
     with pytest.raises(MortgageValidationError):
-        calculate_mortgage(base_inputs({"savingsPayoutIntervalYears": 0}))
+        calculate_mortgage(base_inputs({"savingsPayoutIntervalMonths": 0}))
     with pytest.raises(MortgageValidationError):
-        calculate_mortgage(base_inputs({"savingsPayoutIntervalYears": -1}))
-    # 0.25 (3 months) and 0.5 (6 months) must be valid, not rejected as non-integer.
-    calculate_mortgage(base_inputs({"savingsPayoutIntervalYears": 0.25}))
-    calculate_mortgage(base_inputs({"savingsPayoutIntervalYears": 0.5}))
+        calculate_mortgage(base_inputs({"savingsPayoutIntervalMonths": -1}))
+    with pytest.raises(MortgageValidationError):
+        calculate_mortgage(base_inputs({"savingsPayoutIntervalMonths": 1.5}))
+    calculate_mortgage(base_inputs({"savingsPayoutIntervalMonths": 3}))
+    calculate_mortgage(base_inputs({"savingsPayoutIntervalMonths": 6}))
 
 
 def test_collects_multiple_issues_in_a_single_error():
@@ -549,7 +552,7 @@ def test_auto_mode_stops_the_monthly_drip_once_past_the_fixed_term_when_banked_s
                 "monthlyOverpaymentAmountMode": "auto",
                 "targetAllowanceUtilizationPct": 50,
                 "bankedSavingsDestination": "lumpSumEachCycle",
-                "savingsPayoutIntervalYears": 1,
+                "savingsPayoutIntervalMonths": 12,
             }
         )
     )
@@ -659,7 +662,7 @@ def test_never_enters_a_variable_period_with_a_zero_month_gap_no_room_to_leave_t
     assert all(e.ratePct == 5 for e in result.schedule)
 
 
-# calculateMortgage — savings payout, staying on the variable rate (periodic, savingsPayoutIntervalYears)
+# calculateMortgage — savings payout, staying on the variable rate (periodic, savingsPayoutIntervalMonths)
 
 
 def payout_inputs(overrides: dict | None = None) -> MortgageInputs:
@@ -715,39 +718,39 @@ def test_never_triggers_an_erc_even_when_erc_applies_past_the_fixed_term_erc_app
     assert result.unallocatedSavingsPot > 0
 
 
-def test_pays_out_the_banked_pot_the_month_the_fixed_term_ends_then_every_savings_payout_interval_years_after_that():
+def test_pays_out_the_banked_pot_the_month_the_fixed_term_ends_then_every_savings_payout_interval_months_after_that():
     # Regression: the rate-cycling refactor accidentally coupled this mechanism
     # entirely to remortgaging into a new fixed deal, so it silently stopped
     # firing at all under rateAfterFixedTermMode: 'stayOnVariable'. Periodic
     # payouts must work regardless of what the rate does afterwards.
-    result = calculate_mortgage(payout_inputs({"savingsPayoutIntervalYears": 1}))
+    result = calculate_mortgage(payout_inputs({"savingsPayoutIntervalMonths": 12}))
     # No payout during the fixed term itself.
     assert all(e.lumpSumPaid == 0 for e in result.schedule[0:24])
     # First payout the month the fixed term ends (month 25), not delayed by a
     # full interval.
     assert result.schedule[24].lumpSumPaid > 0
-    # Not again until a full interval (1 year = 12 months) has passed.
+    # Not again until a full interval (12 months) has passed.
     assert all(e.lumpSumPaid == 0 for e in result.schedule[25:36])
     # Repeats every 12 months after that (month 37).
     assert result.schedule[36].lumpSumPaid > 0
 
 
-def test_supports_fractional_years_0_25_for_3_months_0_5_for_6_months():
-    quarterly = calculate_mortgage(payout_inputs({"savingsPayoutIntervalYears": 0.25}))
+def test_supports_short_intervals_3_months_and_6_months():
+    quarterly = calculate_mortgage(payout_inputs({"savingsPayoutIntervalMonths": 3}))
     # First payout month 25, next 3 months later at month 28.
     assert quarterly.schedule[24].lumpSumPaid > 0
     assert all(e.lumpSumPaid == 0 for e in quarterly.schedule[25:27])
     assert quarterly.schedule[27].lumpSumPaid > 0  # month 28
 
-    semi_annual = calculate_mortgage(payout_inputs({"savingsPayoutIntervalYears": 0.5}))
+    semi_annual = calculate_mortgage(payout_inputs({"savingsPayoutIntervalMonths": 6}))
     assert semi_annual.schedule[24].lumpSumPaid > 0
     assert all(e.lumpSumPaid == 0 for e in semi_annual.schedule[25:30])
     assert semi_annual.schedule[30].lumpSumPaid > 0  # month 31
 
 
 def test_a_shorter_payout_interval_pays_out_more_often_than_a_longer_one():
-    frequent = calculate_mortgage(payout_inputs({"savingsPayoutIntervalYears": 0.5}))
-    infrequent = calculate_mortgage(payout_inputs({"savingsPayoutIntervalYears": 2}))
+    frequent = calculate_mortgage(payout_inputs({"savingsPayoutIntervalMonths": 6}))
+    infrequent = calculate_mortgage(payout_inputs({"savingsPayoutIntervalMonths": 24}))
 
     def payout_count(r):
         return len([e for e in r.schedule if e.lumpSumPaid > 0])
@@ -772,7 +775,7 @@ def test_conserves_every_pound_of_banked_savings_when_a_payout_overshoots_the_pa
     # (totalOverpaid) or in the unallocated savings pot — nothing may vanish.
     inputs = payout_inputs(
         {
-            "savingsPayoutIntervalYears": 1,
+            "savingsPayoutIntervalMonths": 12,
             "propertyValue": 120_000,
             "deposit": 60_000,
             "currentRent": 20_000,
@@ -812,14 +815,14 @@ def cycling_payout_inputs(overrides: dict | None = None) -> MortgageInputs:
     return base_inputs(data)
 
 
-def test_pays_out_the_month_immediately_after_each_fixed_deal_ends_repeating_every_cycle_ignoring_savings_payout_interval_years_entirely():
+def test_pays_out_the_month_immediately_after_each_fixed_deal_ends_repeating_every_cycle_ignoring_savings_payout_interval_months_entirely():
     # mode 'none' (no competing recurring overpayment) isolates the payout
     # mechanism's timing: with cycling active, a payout should land right after
     # each remortgage point regardless of any calendar interval set.
-    result = calculate_mortgage(cycling_payout_inputs({"savingsPayoutIntervalYears": 5}))
+    result = calculate_mortgage(cycling_payout_inputs({"savingsPayoutIntervalMonths": 60}))
     # Cycle boundaries at months 24 and 50 (26-month cycle: 24 fixed + 2 gap) —
     # payouts land the month immediately after each one, not tied to the
-    # (deliberately huge, 5-year) interval above.
+    # (deliberately huge, 60-month) interval above.
     assert all(e.lumpSumPaid == 0 for e in result.schedule[0:24])
     assert result.schedule[24].lumpSumPaid > 0  # month 25
     assert result.schedule[50].lumpSumPaid > 0  # month 51

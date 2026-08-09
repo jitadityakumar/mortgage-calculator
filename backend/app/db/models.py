@@ -16,3 +16,20 @@ class SavedCalculation(Base):
     # defaults instead of silently going stale after a config tweak.
     inputs_json = Column(Text, nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+
+
+class DefaultsConfig(Base):
+    __tablename__ = "defaults_config"
+
+    # Always id=1 — a single-row table, not one row per user (this app has
+    # no accounts). Stores a MortgageDefaults JSON blob, mirroring
+    # SavedCalculation.inputs_json's pattern, so adding a field later needs
+    # no schema migration.
+    id = Column(Integer, primary_key=True)
+    defaults_json = Column(Text, nullable=False)
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )

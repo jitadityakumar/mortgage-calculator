@@ -1,9 +1,10 @@
 from fastapi.testclient import TestClient
 
-from app.engine import DEFAULT_DEPOSIT
+from app.engine import load_seed_defaults
 from app.main import app
 
 client = TestClient(app)
+DEFAULT_DEPOSIT = load_seed_defaults().deposit
 
 
 def test_health() -> None:
