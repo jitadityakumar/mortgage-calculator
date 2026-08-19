@@ -58,6 +58,7 @@ def _would_clear_within_window_on_variable(
     allowance_limit_this_year: int,
     allowance_used_this_year: int,
     auto_target_used_this_year: int,
+    pacing_year_anchor_month: int,
 ) -> bool:
     """'hybrid' mode's boundary check: if the loan switched to the variable
     rate right now and stayed there, would it clear within `window_months`
@@ -68,15 +69,27 @@ def _would_clear_within_window_on_variable(
     calculate_mortgage()'s loop directly, since this only ever needs a
     pass/fail projection, never a real schedule.
 
-    The three allowance_* arguments carry in the real mid-year state as of
-    the boundary month (the caller's own live values) rather than starting
-    fresh — the window begins mid-year from the loan's actual allowance-year
-    alignment, and treating it as a fresh reset would bias the projection
-    (optimistically understating what's already been used, pessimistically
-    if the limit itself has since drifted with the balance) in a direction
-    that depends on the specific inputs, not a single safe-to-ignore one.
-    The loop's own (month - 1) % 12 == 0 reset still fires normally for any
-    later anniversary that falls inside the window.
+    The allowance_limit_this_year/allowance_used_this_year arguments carry
+    in the real mid-year ERC-allowance state as of the boundary month (the
+    caller's own live values) rather than starting fresh — the window
+    begins mid-year from the loan's actual allowance-year alignment, and
+    treating it as a fresh reset would bias the projection (optimistically
+    understating what's already been used, pessimistically if the limit
+    itself has since drifted with the balance) in a direction that depends
+    on the specific inputs, not a single safe-to-ignore one. The loop's own
+    (month - 1) % 12 == 0 reset still fires normally for any later
+    anniversary that falls inside the window.
+
+    pacing_year_anchor_month, by contrast, is deliberately *not* the
+    caller's live pre-commit pacing anchor — it's always passed as
+    start_month. If this projection says "yes, commit," the real loop's own
+    is_regime_start fires at exactly start_month (the hybrid_committed
+    suppressor only applies from hybrid_committed_at_month + 2 onward), which
+    resets the real run's pacing anchor and zeroes auto_target_used_this_year
+    right there. Passing the stale pre-commit anchor instead would pace this
+    projection against the old cycling deal's already-mostly-used pacing
+    year, materially under-stating how fast the loan can actually clear if
+    it commits.
 
     Known simplification: ignores dated lump-sum overpayments that would
     fall inside the lookahead window (calculate_mortgage()'s real run still
@@ -101,6 +114,7 @@ def _would_clear_within_window_on_variable(
         if (month - 1) % 12 == 0:
             allowance_limit_this_year = _compute_allowance_limit_pence(balance, principal_pence, config)
             allowance_used_this_year = 0
+        if (month - pacing_year_anchor_month) % 12 == 0:
             auto_target_used_this_year = 0
 
         opening_balance = balance
@@ -124,9 +138,16 @@ def _would_clear_within_window_on_variable(
             recurring_overpayment = fixed_monthly_overpayment_pence
         elif overpayment_amount_mode == "auto" and auto_pacing_active:
             target_allowance_limit_this_year = js_round((allowance_limit_this_year * target_utilization_pct) / 100)
-            months_remaining_in_year = 12 - ((month - 1) % 12)
+            months_remaining_in_year = 12 - ((month - pacing_year_anchor_month) % 12)
             remaining_target = max(0, target_allowance_limit_this_year - auto_target_used_this_year)
-            equal_monthly_installment = js_round(remaining_target / months_remaining_in_year)
+            # See the main loop's identical cap for why this isn't divided
+            # into months_remaining_in_year: the ERC allowance year and the
+            # pacing year can be misaligned.
+            remaining_real_allowance_for_pacing = max(0, allowance_limit_this_year - allowance_used_this_year)
+            equal_monthly_installment = min(
+                js_round(remaining_target / months_remaining_in_year),
+                remaining_real_allowance_for_pacing,
+            )
             recurring_overpayment = min(effective_savings, equal_monthly_installment)
 
         savings_added = max(0, effective_savings - recurring_overpayment)
@@ -245,6 +266,11 @@ def calculate_mortgage(inputs: MortgageInputs, defaults: Optional[MortgageDefaul
     allowance_limit_this_year = _compute_allowance_limit_pence(balance, principal_pence, config)
     allowance_used_this_year = 0
     auto_target_used_this_year = 0
+    # Anchors auto_target_used_this_year's reset to the start of the current
+    # regime (fixed deal / SVR gap / post-hybrid-commit stretch) rather than
+    # absolute loan age — see issue #12. The real ERC allowance year (below)
+    # deliberately stays on the absolute (month - 1) % 12 == 0 schedule.
+    pacing_year_anchor_month = 1
 
     schedule: list[MonthlyScheduleEntry] = []
     month = 1
@@ -283,6 +309,7 @@ def calculate_mortgage(inputs: MortgageInputs, defaults: Optional[MortgageDefaul
             # about the rate changes again once committed.
             is_regime_start = False
         if is_regime_start:
+            pacing_year_anchor_month = month
             remaining_months = total_term_months - month + 1
             current_payment = _calc_monthly_payment_pence(balance, monthly_rate, remaining_months)
 
@@ -298,6 +325,7 @@ def calculate_mortgage(inputs: MortgageInputs, defaults: Optional[MortgageDefaul
         if (month - 1) % 12 == 0:
             allowance_limit_this_year = _compute_allowance_limit_pence(balance, principal_pence, config)
             allowance_used_this_year = 0
+        if (month - pacing_year_anchor_month) % 12 == 0:
             auto_target_used_this_year = 0
 
         opening_balance = balance
@@ -323,12 +351,25 @@ def calculate_mortgage(inputs: MortgageInputs, defaults: Optional[MortgageDefaul
             recurring_overpayment_pence = fixed_monthly_overpayment_pence
         elif overpayment_amount_mode == "auto" and auto_pacing_active:
             target_allowance_limit_this_year = js_round((allowance_limit_this_year * target_utilization_pct) / 100)
-            months_remaining_in_year = 12 - ((month - 1) % 12)
+            months_remaining_in_year = 12 - ((month - pacing_year_anchor_month) % 12)
             remaining_target_pence = max(
                 0,
                 target_allowance_limit_this_year - auto_target_used_this_year - manual_lump_sum_this_month,
             )
-            equal_monthly_installment_pence = js_round(remaining_target_pence / months_remaining_in_year)
+            # Caps this month's installment against the real remaining
+            # allowance directly (not divided across months_remaining_in_year
+            # first) — the ERC allowance year and the pacing year can now be
+            # misaligned (see pacing_year_anchor_month above), so dividing
+            # the real-allowance remainder by the pacing year's month count
+            # would spread it over the wrong number of months, under-pacing
+            # early and over-correcting later even though no ERC risk exists.
+            remaining_real_allowance_for_pacing_pence = max(
+                0, allowance_limit_this_year - allowance_used_this_year - manual_lump_sum_this_month
+            )
+            equal_monthly_installment_pence = min(
+                js_round(remaining_target_pence / months_remaining_in_year),
+                remaining_real_allowance_for_pacing_pence,
+            )
             recurring_overpayment_pence = min(effective_savings_pence, equal_monthly_installment_pence)
 
         savings_added_this_month_pence = max(0, effective_savings_pence - recurring_overpayment_pence)
@@ -376,7 +417,9 @@ def calculate_mortgage(inputs: MortgageInputs, defaults: Optional[MortgageDefaul
             allowance_used_this_year += within_allowance
             if excess > 0:
                 erc_charged = js_round((excess * config.ercRateOnExcessPct) / 100)
-        auto_target_used_this_year += overpayment_applied
+        in_remortgage_gap = is_variable_period and cycling_active and not hybrid_committed
+        if not in_remortgage_gap:
+            auto_target_used_this_year += overpayment_applied
 
         balance -= overpayment_applied
         if balance < 0:
@@ -421,6 +464,16 @@ def calculate_mortgage(inputs: MortgageInputs, defaults: Optional[MortgageDefaul
                 allowance_limit_this_year=allowance_limit_this_year,
                 allowance_used_this_year=allowance_used_this_year,
                 auto_target_used_this_year=auto_target_used_this_year,
+                # month + 1 (== start_month), not the live pre-commit
+                # pacing_year_anchor_month: if the loan actually commits
+                # here, month + 1 is exactly where the real loop's own
+                # is_regime_start fires and resets the pacing anchor (the
+                # hybrid_committed suppressor only kicks in from
+                # hybrid_committed_at_month + 2 onward) — so the projection
+                # must reset its pacing year at i == 0 too, matching what
+                # the committed run would actually do, rather than keep
+                # pacing against the pre-commit cycling deal's stale year.
+                pacing_year_anchor_month=month + 1,
             )
             if would_clear:
                 hybrid_committed_at_month = month

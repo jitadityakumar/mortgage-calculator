@@ -830,6 +830,7 @@ def test_hybrid_lookahead_inherits_the_real_mid_year_allowance_state_instead_of_
         principal_pence=200_000,
         savings_pot_pence=0,
         start_month=2,  # mid-year: month 2 of the allowance year, 10 months left in it
+        pacing_year_anchor_month=1,  # same anchor as the ERC year here — isolates the behavior under test
         remaining_total_term_months=300,
         window_months=10,
         variable_monthly_rate=7.25 / 100 / 12,
@@ -1165,3 +1166,216 @@ def test_calculate_with_all_fields_given_ignores_defaults_entirely():
     # resolve_mortgage_inputs() as a no-op.
     assert result.principal == 200_000
     assert len(result.schedule) == 300
+
+
+# calculateMortgage — issue #12: auto-pacing target incorrectly anchored to
+# loan age, and SVR lump sums eating into the next fixed deal's target
+
+
+def test_auto_pacing_does_not_stall_after_a_remortgage_when_the_svr_gap_lands_near_a_12_month_boundary():
+    # Exact repro from issue #12: a 5-year (60-month) fixed term is a
+    # multiple of 12, so the old absolute-loan-age reset always landed
+    # exactly on the SVR gap month, and the gap's lump sum sweep silently
+    # consumed the entire next allowance year's pacing target — stalling
+    # 'auto' overpayments for ~11 months into the new fixed deal.
+    result = calculate_mortgage(
+        base_inputs(
+            {
+                "fixedRateAnnualPct": 5,
+                "fixedTermMonths": 60,
+                "variableRateAnnualPct": 7,
+                "totalTermMonths": 300,
+                "monthlyOverpaymentAmountMode": "auto",
+                "targetAllowanceUtilizationPct": 50,
+                "bankedSavingsDestination": "lumpSumEachCycle",
+                "savingsPayoutIntervalMonths": 6,
+                "rateAfterFixedTermMode": "remortgageToNewFixed",
+                "remortgageGapMonths": 2,
+                "propertyValue": 500_000,
+                "deposit": 75_000,
+                "currentRent": 2300,
+                "monthlySavings": 2000,
+            }
+        )
+    )
+    # Month 62 is still inside the 2-month SVR gap itself (months 61-62),
+    # where 'auto' recurring pacing is legitimately inactive by design (only
+    # the lump-sum sweep applies there) — not part of the bug. The bug's
+    # actual stall was fixed deal 2's first 11 months, 63-72.
+    second_deal_start = [e for e in result.schedule if 63 <= e.month <= 72]
+    assert len(second_deal_start) == 10
+    assert all(e.overpaymentPaid > 0 for e in second_deal_start)
+
+
+def test_erc_allowance_year_stays_absolute_anchored_when_fixed_term_is_not_a_multiple_of_12():
+    # Regression guard: the rejected single-anchor draft would have moved
+    # the real ERC allowance year to the regime-start anchor too, silently
+    # under/over-charging ERC whenever fixedTermMonths isn't a multiple of
+    # 12. stayOnVariable vs remortgageToNewFixed run byte-for-byte identical
+    # math through the shared first fixed deal (no regime transition has
+    # happened yet), so with the same totalTermMonths their ERC over that
+    # window must match exactly regardless of which pacing anchor a later
+    # regime transition would introduce.
+    inputs = {
+        "fixedTermMonths": 66,
+        "totalTermMonths": 300,
+        "variableRateAnnualPct": 7,
+        "config": {"annualOverpaymentAllowancePct": 10, "ercRateOnExcessPct": 3, "ercAppliesDuringFixedTermOnly": True},
+        **fixed_overpayment(2_000),
+    }
+    non_cycling_result = calculate_mortgage(base_inputs({**inputs, "rateAfterFixedTermMode": "stayOnVariable"}))
+    cycling_result = calculate_mortgage(
+        base_inputs({**inputs, "rateAfterFixedTermMode": "remortgageToNewFixed", "remortgageGapMonths": 3})
+    )
+    first_66_months_erc_non_cycling = sum(e.ercCharged for e in non_cycling_result.schedule[:66])
+    first_66_months_erc_cycling = sum(e.ercCharged for e in cycling_result.schedule[:66])
+    assert first_66_months_erc_cycling == pytest.approx(first_66_months_erc_non_cycling, abs=0.01)
+    assert first_66_months_erc_non_cycling > 0
+
+
+def test_stay_on_variable_and_zero_gap_cases_are_unaffected_by_the_regime_start_anchor():
+    # Both cycling_active == False (stayOnVariable) and the zero-gap edge
+    # case have no "gap" to exclude from pacing, so bug 2's fix is a no-op
+    # for them — only confirming the anchor reset itself doesn't introduce a
+    # stall. bankedSavingsDestination "keepAsSavings" keeps auto-pacing
+    # active throughout (lumpSumEachCycle intentionally disables the
+    # recurring drip once ERC-free, a separate documented behavior — see
+    # test_auto_mode_stops_the_monthly_drip...).
+    stay_on_variable = calculate_mortgage(
+        base_inputs(
+            {
+                "fixedTermMonths": 24,
+                "totalTermMonths": 120,
+                "variableRateAnnualPct": 7,
+                "rateAfterFixedTermMode": "stayOnVariable",
+                "monthlyOverpaymentAmountMode": "auto",
+                "targetAllowanceUtilizationPct": 50,
+                "bankedSavingsDestination": "keepAsSavings",
+                "currentRent": 1800,
+                "monthlySavings": 500,
+            }
+        )
+    )
+    assert all(e.overpaymentPaid > 0 for e in stay_on_variable.schedule[22:36])
+
+    zero_gap = calculate_mortgage(
+        base_inputs(
+            {
+                "fixedTermMonths": 24,
+                "totalTermMonths": 120,
+                "variableRateAnnualPct": 7,
+                "rateAfterFixedTermMode": "remortgageToNewFixed",
+                "remortgageGapMonths": 0,
+                "monthlyOverpaymentAmountMode": "auto",
+                "targetAllowanceUtilizationPct": 50,
+                "bankedSavingsDestination": "keepAsSavings",
+                "currentRent": 1800,
+                "monthlySavings": 500,
+            }
+        )
+    )
+    assert all(e.overpaymentPaid > 0 for e in zero_gap.schedule[22:36])
+
+
+def test_auto_pacing_never_exceeds_the_real_remaining_allowance_when_erc_applies_outside_the_fixed_term_too():
+    # ercAppliesDuringFixedTermOnly: False residual risk flagged in the
+    # issue's proposed fix — the gap sweep now correctly still consumes
+    # allowance_used_this_year (unchanged), but without the added cap the
+    # next fixed deal's pacing target would be computed against the full,
+    # unreduced allowance and could pace overpayments past what's actually
+    # left, triggering unexpected ERC.
+    result = calculate_mortgage(
+        base_inputs(
+            {
+                "fixedRateAnnualPct": 5,
+                "fixedTermMonths": 24,
+                "variableRateAnnualPct": 7,
+                "totalTermMonths": 120,
+                "config": {
+                    "annualOverpaymentAllowancePct": 10,
+                    "ercRateOnExcessPct": 3,
+                    "ercAppliesDuringFixedTermOnly": False,
+                },
+                "monthlyOverpaymentAmountMode": "auto",
+                "targetAllowanceUtilizationPct": 100,
+                "bankedSavingsDestination": "lumpSumEachCycle",
+                "savingsPayoutIntervalMonths": 2,
+                "rateAfterFixedTermMode": "remortgageToNewFixed",
+                "remortgageGapMonths": 2,
+                "currentRent": 2500,
+                "monthlySavings": 2000,
+            }
+        )
+    )
+    # Without the cap (verified by temporarily removing it), this exact
+    # scenario charges £543.76 of ERC — the pacing target, computed off the
+    # full unreduced allowance, outpaces what's actually left once the gap
+    # sweep has already consumed some of allowance_used_this_year. With the
+    # cap, pacing never proposes more than the real remaining allowance, so
+    # no ERC is charged at all.
+    assert result.totalErcPaid == 0
+
+
+def test_a_manual_dated_lump_sum_landing_inside_the_remortgage_gap_does_not_count_against_the_next_deals_pacing_target():
+    result = calculate_mortgage(
+        base_inputs(
+            {
+                "fixedRateAnnualPct": 5,
+                "fixedTermMonths": 24,
+                "variableRateAnnualPct": 7,
+                "totalTermMonths": 120,
+                "monthlyOverpaymentAmountMode": "auto",
+                "targetAllowanceUtilizationPct": 50,
+                "bankedSavingsDestination": "keepAsSavings",
+                "rateAfterFixedTermMode": "remortgageToNewFixed",
+                "remortgageGapMonths": 2,
+                "currentRent": 1800,
+                "monthlySavings": 500,
+                # Gap is months 25-26; land a manual lump sum there.
+                "lumpSums": [{"atMonth": 25, "amount": 5_000}],
+            }
+        )
+    )
+    # The new fixed deal (starting month 27) should still see nonzero
+    # 'auto' overpayments immediately, unaffected by the gap's manual lump.
+    new_deal_start = [e for e in result.schedule if 27 <= e.month <= 30]
+    assert all(e.overpaymentPaid > 0 for e in new_deal_start)
+
+
+def test_hybrid_lookahead_paces_against_the_post_commit_anchor_not_the_stale_pre_commit_one():
+    # Regression for an Opus math-review finding on this issue's fix: the
+    # committed run's own is_regime_start fires at exactly start_month
+    # (month + 1) when hybrid commits — the hybrid_committed suppressor
+    # only kicks in from hybrid_committed_at_month + 2 onward — so the real
+    # run resets its pacing anchor/auto_target_used_this_year right there.
+    # Passing the caller's stale pre-commit pacing anchor into the
+    # lookahead instead (an earlier draft of this fix did exactly that,
+    # trusting the issue's own proposed-fix comment) understates how fast
+    # the loan can pace once committed, by up to ~4x in this repro,
+    # wrongly declining to commit at month 249 and dragging payoff from
+    # 296 out toward 300. Directly checks the real, symptomatic output
+    # (payoff month + a later boundary existing at all) rather than
+    # calling the private helper directly, so this fails end-to-end if the
+    # wrong anchor is ever passed back into the call site.
+    result = calculate_mortgage(
+        base_inputs(
+            {
+                "fixedTermMonths": 45,
+                "variableRateAnnualPct": 7,
+                "rateAfterFixedTermMode": "hybrid",
+                "remortgageGapMonths": 6,
+                "monthlyOverpaymentAmountMode": "auto",
+                "targetAllowanceUtilizationPct": 50,
+                "bankedSavingsDestination": "keepAsSavings",
+                "currentRent": 2300,
+                "monthlySavings": 2000,
+            }
+        )
+    )
+    assert result.payoffMonth == 296
+    # Correctly declines to commit at the month-249 boundary (the stale,
+    # under-paced projection would wrongly say "yes, commit" here) — so
+    # the loan keeps cycling into one more gap + fixed deal instead.
+    assert [e.month for e in result.schedule if e.isFixedPeriodBoundary][-1] == 249
+    assert result.schedule[249].ratePct == 7  # month 250: gap, not a hybrid commit
+    assert result.schedule[255].ratePct == 5  # month 256: back to a new fixed deal

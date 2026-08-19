@@ -132,7 +132,14 @@ def test_calculate_with_property_value_and_deposit_only_uses_defaults_for_rest()
     # back into a new fixed deal after the fixed term + remortgage gap instead
     # of paying off shortly after moving to the variable rate, extending the
     # payoff schedule (was 67 months).
-    assert len(body["schedule"]) == 123
+    # 71 (was 123 before issue #12's fix): the 60-month fixed term is a
+    # multiple of 12, so the old absolute-loan-age allowance-year reset
+    # always landed on the SVR gap month, and the gap's lump-sum sweep
+    # silently consumed the entire next fixed deal's auto-pacing target —
+    # stalling 'auto' overpayments for ~11 months after every remortgage
+    # cycle and dragging out payoff. Fixed pacing now clears the loan much
+    # sooner.
+    assert len(body["schedule"]) == 71
 
 
 def test_get_defaults_returns_the_shared_default_values() -> None:
