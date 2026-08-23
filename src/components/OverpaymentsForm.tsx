@@ -107,6 +107,15 @@ export function OverpaymentsForm({ form, update, initialMonthlyPayment }: Overpa
           />
           <span>Auto (% of penalty free allowance)</span>
         </label>
+        <label className="radio-field">
+          <input
+            type="radio"
+            name="monthlyOverpaymentAmountMode"
+            checked={form.monthlyOverpaymentAmountMode === 'autoMinSavings'}
+            onChange={() => update('monthlyOverpaymentAmountMode', 'autoMinSavings')}
+          />
+          <span>Auto (minimum monthly savings)</span>
+        </label>
       </div>
 
       {form.monthlyOverpaymentAmountMode === 'fixed' && (
@@ -129,6 +138,18 @@ export function OverpaymentsForm({ form, update, initialMonthlyPayment }: Overpa
           step="5"
           min="0"
           labelHint="Defaults to 50% of the lender's full allowance (set in Advanced assumptions). Spread evenly across the year's 12 months rather than maxed out early, so you don't stop overpaying partway through. Raise it toward 100% to use more of the allowance, or lower it to deliberately keep more in savings instead of overpaying."
+        />
+      )}
+
+      {form.monthlyOverpaymentAmountMode === 'autoMinSavings' && (
+        <NumberField
+          label="Minimum monthly savings"
+          prefix="£"
+          value={form.minMonthlySavingsReserve}
+          onChange={(v) => update('minMonthlySavingsReserve', v)}
+          step="50"
+          min="0"
+          labelHint="Reserved from your rent + savings pool first, so you always keep at least this much in savings each month — subject to what's actually available. Whatever's left goes toward overpaying, up to 100% of your penalty-free allowance. If the pool that month is smaller than this, it all banks and nothing overpays, rather than dipping below the minimum."
         />
       )}
 

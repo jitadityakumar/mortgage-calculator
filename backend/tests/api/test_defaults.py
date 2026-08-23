@@ -213,6 +213,7 @@ def test_post_reset_defaults_restores_shipped_values(client: TestClient) -> None
         {"depositSavings": -1},
         {"fixedMonthlyOverpayment": -1},
         {"targetAllowanceUtilizationPct": 101},
+        {"minMonthlySavingsReserve": -1},
         {"currentRent": -1},
         {"monthlySavings": -1},
         {"serviceCharge": -1},

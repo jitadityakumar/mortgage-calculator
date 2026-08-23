@@ -38,6 +38,60 @@ def _compute_allowance_limit_pence(balance_pence: int, original_principal_pence:
     return js_round((basis_balance * config.annualOverpaymentAllowancePct) / 100)
 
 
+def _compute_recurring_overpayment_pence(
+    *,
+    overpayment_amount_mode: str,
+    fixed_monthly_overpayment_pence: int,
+    auto_pacing_active: bool,
+    effective_savings_pence: int,
+    allowance_limit_this_year: int,
+    allowance_used_this_year: int,
+    target_utilization_pct: float,
+    auto_target_used_this_year: int,
+    months_remaining_in_year: int,
+    min_monthly_savings_reserve_pence: int = 0,
+    manual_lump_sum_this_month: int = 0,
+) -> int:
+    """Shared by the main loop and `_would_clear_within_window_on_variable`'s
+    lookahead. 'autoMinSavings' is 'auto' with a fixed reserve subtracted
+    from the pool first — a soft floor: if the pool is smaller than the
+    reserve, the reserve is capped at the pool (min()), so the recurring
+    overpayment is simply 0 that month rather than needing a special case.
+    Once the reserve is set aside, 'autoMinSavings' paces up to 100% of the
+    penalty-free allowance regardless of `target_utilization_pct` (that
+    field only applies to plain 'auto') — having already protected a
+    minimum, there's no reason to hold back further.
+
+    The lookahead call site doesn't track a real allowance_used_this_year or
+    manual lump sums, so it passes 0 for both — harmless, since with an
+    effective target_utilization_pct <= 100 the resulting installment never
+    exceeds allowance_limit_this_year and so never hits that cap anyway.
+    """
+    if overpayment_amount_mode == "fixed":
+        return fixed_monthly_overpayment_pence
+    if overpayment_amount_mode in ("auto", "autoMinSavings") and auto_pacing_active:
+        pool_pence = effective_savings_pence
+        effective_target_utilization_pct = target_utilization_pct
+        if overpayment_amount_mode == "autoMinSavings":
+            pool_pence -= min(pool_pence, min_monthly_savings_reserve_pence)
+            effective_target_utilization_pct = 100
+        target_allowance_limit_this_year = js_round(
+            (allowance_limit_this_year * effective_target_utilization_pct) / 100
+        )
+        remaining_target_pence = max(
+            0, target_allowance_limit_this_year - auto_target_used_this_year - manual_lump_sum_this_month
+        )
+        remaining_real_allowance_for_pacing_pence = max(
+            0, allowance_limit_this_year - allowance_used_this_year - manual_lump_sum_this_month
+        )
+        equal_monthly_installment_pence = min(
+            js_round(remaining_target_pence / months_remaining_in_year),
+            remaining_real_allowance_for_pacing_pence,
+        )
+        return min(pool_pence, equal_monthly_installment_pence)
+    return 0
+
+
 def _would_clear_within_window_on_variable(
     *,
     balance_pence: int,
@@ -52,6 +106,7 @@ def _would_clear_within_window_on_variable(
     overpayment_amount_mode: str,
     fixed_monthly_overpayment_pence: int,
     target_utilization_pct: float,
+    min_monthly_savings_reserve_pence: int,
     monthly_budget_pool_pence: int,
     banked_destination: str,
     savings_payout_interval_months: int,
@@ -127,15 +182,18 @@ def _would_clear_within_window_on_variable(
         # relabel money one month early.
         auto_pacing_active = allowance_applies or banked_destination != "lumpSumEachCycle"
 
-        recurring_overpayment = 0
-        if overpayment_amount_mode == "fixed":
-            recurring_overpayment = fixed_monthly_overpayment_pence
-        elif overpayment_amount_mode == "auto" and auto_pacing_active:
-            target_allowance_limit_this_year = js_round((allowance_limit_this_year * target_utilization_pct) / 100)
-            months_remaining_in_year = 12 - ((month - erc_year_anchor_month) % 12)
-            remaining_target = max(0, target_allowance_limit_this_year - auto_target_used_this_year)
-            equal_monthly_installment = js_round(remaining_target / months_remaining_in_year)
-            recurring_overpayment = min(effective_savings, equal_monthly_installment)
+        recurring_overpayment = _compute_recurring_overpayment_pence(
+            overpayment_amount_mode=overpayment_amount_mode,
+            fixed_monthly_overpayment_pence=fixed_monthly_overpayment_pence,
+            auto_pacing_active=auto_pacing_active,
+            effective_savings_pence=effective_savings,
+            allowance_limit_this_year=allowance_limit_this_year,
+            allowance_used_this_year=0,
+            target_utilization_pct=target_utilization_pct,
+            auto_target_used_this_year=auto_target_used_this_year,
+            months_remaining_in_year=12 - ((month - erc_year_anchor_month) % 12),
+            min_monthly_savings_reserve_pence=min_monthly_savings_reserve_pence,
+        )
 
         savings_added = max(0, effective_savings - recurring_overpayment)
         savings_pot += savings_added
@@ -215,6 +273,7 @@ def calculate_mortgage(inputs: MortgageInputs, defaults: Optional[MortgageDefaul
     )
     fixed_monthly_overpayment_pence = pounds_to_pence(inputs.fixedMonthlyOverpayment)
     target_utilization_pct = inputs.targetAllowanceUtilizationPct
+    min_monthly_savings_reserve_pence = pounds_to_pence(inputs.minMonthlySavingsReserve)
     monthly_budget_pool_pence = max(
         0,
         pounds_to_pence(inputs.currentRent + inputs.monthlySavings - inputs.serviceCharge),
@@ -362,30 +421,24 @@ def calculate_mortgage(inputs: MortgageInputs, defaults: Optional[MortgageDefaul
 
         auto_pacing_active = allowance_applies or banked_destination != "lumpSumEachCycle"
 
-        recurring_overpayment_pence = 0
-        if overpayment_amount_mode == "fixed":
-            recurring_overpayment_pence = fixed_monthly_overpayment_pence
-        elif overpayment_amount_mode == "auto" and auto_pacing_active:
-            target_allowance_limit_this_year = js_round((allowance_limit_this_year * target_utilization_pct) / 100)
-            # Frozen (not decremented) during the SVR gap, mirroring
-            # auto_target_used_this_year's own gap-exclusion below — a gap
-            # month shouldn't shrink the divisor here any more than it
-            # should grow the numerator there, or the installment would
-            # ramp every gap month even though nothing about the target
-            # actually changed.
-            months_remaining_in_year = 12 - months_elapsed_this_year_for_pacing
-            remaining_target_pence = max(
-                0,
-                target_allowance_limit_this_year - auto_target_used_this_year - manual_lump_sum_this_month,
-            )
-            remaining_real_allowance_for_pacing_pence = max(
-                0, allowance_limit_this_year - allowance_used_this_year - manual_lump_sum_this_month
-            )
-            equal_monthly_installment_pence = min(
-                js_round(remaining_target_pence / months_remaining_in_year),
-                remaining_real_allowance_for_pacing_pence,
-            )
-            recurring_overpayment_pence = min(effective_savings_pence, equal_monthly_installment_pence)
+        # Frozen (not decremented) during the SVR gap, mirroring
+        # auto_target_used_this_year's own gap-exclusion below — a gap month
+        # shouldn't shrink the divisor here any more than it should grow the
+        # numerator there, or the installment would ramp every gap month even
+        # though nothing about the target actually changed.
+        recurring_overpayment_pence = _compute_recurring_overpayment_pence(
+            overpayment_amount_mode=overpayment_amount_mode,
+            fixed_monthly_overpayment_pence=fixed_monthly_overpayment_pence,
+            auto_pacing_active=auto_pacing_active,
+            effective_savings_pence=effective_savings_pence,
+            allowance_limit_this_year=allowance_limit_this_year,
+            allowance_used_this_year=allowance_used_this_year,
+            target_utilization_pct=target_utilization_pct,
+            auto_target_used_this_year=auto_target_used_this_year,
+            months_remaining_in_year=12 - months_elapsed_this_year_for_pacing,
+            min_monthly_savings_reserve_pence=min_monthly_savings_reserve_pence,
+            manual_lump_sum_this_month=manual_lump_sum_this_month,
+        )
 
         savings_added_this_month_pence = max(0, effective_savings_pence - recurring_overpayment_pence)
         savings_pot_pence += savings_added_this_month_pence
@@ -473,6 +526,7 @@ def calculate_mortgage(inputs: MortgageInputs, defaults: Optional[MortgageDefaul
                 overpayment_amount_mode=overpayment_amount_mode,
                 fixed_monthly_overpayment_pence=fixed_monthly_overpayment_pence,
                 target_utilization_pct=target_utilization_pct,
+                min_monthly_savings_reserve_pence=min_monthly_savings_reserve_pence,
                 monthly_budget_pool_pence=monthly_budget_pool_pence,
                 banked_destination=banked_destination,
                 savings_payout_interval_months=savings_payout_interval_months,

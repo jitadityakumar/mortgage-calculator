@@ -14,9 +14,10 @@ exposed beyond localhost/your tailnet.
 
 - Standard fixed → variable (follow-on) rate amortization, given property value, deposit,
   fixed rate/term, variable rate, and total term.
-- Overpayments: recurring monthly (fixed amount, or "auto" — the most that fits within a
-  target % of your lender's penalty-free allowance), one-off lump sums at specific months,
-  and either "reduce term" or "reduce payment" mode.
+- Overpayments: recurring monthly (fixed amount; "auto" — the most that fits within a target
+  % of your lender's penalty-free allowance; or "auto (minimum monthly savings)" — same
+  pacing, but reserving a minimum savings amount from the pool first), one-off lump sums at
+  specific months, and either "reduce term" or "reduce payment" mode.
 - Models a rent + savings pool: money freed up by not renting, plus existing savings, minus
   a recurring service charge/ground rent, can fund overpayments automatically.
 - Once-the-fixed-deal-ends modeling, three modes: repeatedly remortgage onto a new

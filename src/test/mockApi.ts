@@ -41,6 +41,7 @@ export const MOCK_DEFAULTS: MortgageDefaults = {
   monthlyOverpaymentAmountMode: 'auto',
   fixedMonthlyOverpayment: 300,
   targetAllowanceUtilizationPct: 50,
+  minMonthlySavingsReserve: 1000,
   bankedSavingsDestination: 'lumpSumEachCycle',
   rateAfterFixedTermMode: 'remortgageToNewFixed',
   updatedAt: null,
