@@ -25,7 +25,7 @@ function getSelectForLabel(labelText: string): HTMLSelectElement {
  * leaving only whatever the test adds on top (e.g. a manual lump sum). */
 async function turnOffAllOverpayments(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByText("None"));
-  await user.click(screen.getByText('Just keep as savings (no lump sum)'));
+  await user.click(screen.getByText('No payout, save only'));
 }
 
 describe('App', () => {
@@ -196,7 +196,7 @@ describe('App', () => {
     await user.click(screen.getByText('Move onto the variable rate and stay there'));
     expect(screen.getByText('Pay out banked savings every')).toBeInTheDocument();
 
-    await user.click(screen.getByText('Just keep as savings (no lump sum)'));
+    await user.click(screen.getByText('No payout, save only'));
     expect(screen.queryByText('Pay out banked savings every')).not.toBeInTheDocument();
   });
 

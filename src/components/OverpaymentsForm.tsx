@@ -1,6 +1,7 @@
 import type { FormState, LumpSumFormRow } from '../types/formState';
 import { formatGBP, parseNum } from '../format';
 import { NumberField } from './NumberField';
+import { InfoIcon } from './InfoIcon';
 
 interface OverpaymentsFormProps {
   form: FormState;
@@ -192,7 +193,7 @@ export function OverpaymentsForm({ form, update, initialMonthlyPayment }: Overpa
             checked={form.rateAfterFixedTermMode === 'remortgageToNewFixed'}
             onChange={() => update('rateAfterFixedTermMode', 'remortgageToNewFixed')}
           />
-          <span>Remortgage into a new fixed deal (repeats for the life of the loan)</span>
+          <span>Remortgage into a new fixed deal</span>
         </label>
         <label className="radio-field">
           <input
@@ -211,8 +212,8 @@ export function OverpaymentsForm({ form, update, initialMonthlyPayment }: Overpa
             onChange={() => update('rateAfterFixedTermMode', 'hybrid')}
           />
           <span>
-            Hybrid — check each time the fixed deal ends: if moving to variable now would clear the mortgage
-            within another fixed deal's length, do that instead of remortgaging again
+            Hybrid
+            <InfoIcon text="Check each time the fixed deal ends: if moving to variable now would clear the mortgage within another fixed deal's length, do that instead of remortgaging again." />
           </span>
         </label>
       </div>
@@ -226,7 +227,7 @@ export function OverpaymentsForm({ form, update, initialMonthlyPayment }: Overpa
             checked={form.bankedSavingsDestination === 'lumpSumEachCycle'}
             onChange={() => update('bankedSavingsDestination', 'lumpSumEachCycle')}
           />
-          <span>Bank it, pay out as a lump sum once off the fixed rate</span>
+          <span>Payout as penalty free lumpsum</span>
         </label>
         <label className="radio-field">
           <input
@@ -235,7 +236,7 @@ export function OverpaymentsForm({ form, update, initialMonthlyPayment }: Overpa
             checked={form.bankedSavingsDestination === 'keepAsSavings'}
             onChange={() => update('bankedSavingsDestination', 'keepAsSavings')}
           />
-          <span>Just keep as savings (no lump sum)</span>
+          <span>No payout, save only</span>
         </label>
       </div>
 

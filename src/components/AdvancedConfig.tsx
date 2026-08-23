@@ -62,14 +62,9 @@ export function AdvancedConfig({ form, update }: AdvancedConfigProps) {
                 checked={form.arrangementFeeAddedToLoan}
                 onChange={(e) => update('arrangementFeeAddedToLoan', e.target.checked)}
               />
-              <span>Add fee to the loan (instead of paying upfront)</span>
+              <span>Add fee to the loan</span>
             </label>
           </div>
-          <p className="field-hint">
-            Real lenders vary on all of these — a typical UK deal allows ~10% penalty-free
-            overpayment per year with a 1–5% charge on the excess during the fixed period only.
-            Treat these as illustrative, not advice.
-          </p>
         </>
       )}
     </fieldset>
