@@ -186,17 +186,15 @@ describe('App', () => {
     expect(screen.queryByText('Time to arrange the next fixed deal')).not.toBeInTheDocument();
   });
 
-  it('the savings payout interval field only appears when staying on the variable rate; cycling shows an automatic-payout note instead', async () => {
+  it('the savings payout interval field only appears when staying on the variable rate', async () => {
     const user = userEvent.setup();
     await renderApp();
     // App default is 'remortgageToNewFixed', where payout timing follows the
     // remortgage cycle automatically — the calendar interval field doesn't apply.
     expect(screen.queryByText('Pay out banked savings every')).not.toBeInTheDocument();
-    expect(screen.getByText(/Banked savings pay out automatically each time you remortgage/)).toBeInTheDocument();
 
     await user.click(screen.getByText('Move onto the variable rate and stay there'));
     expect(screen.getByText('Pay out banked savings every')).toBeInTheDocument();
-    expect(screen.queryByText(/Banked savings pay out automatically each time you remortgage/)).not.toBeInTheDocument();
 
     await user.click(screen.getByText('Just keep as savings (no lump sum)'));
     expect(screen.queryByText('Pay out banked savings every')).not.toBeInTheDocument();

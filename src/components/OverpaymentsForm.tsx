@@ -256,15 +256,6 @@ export function OverpaymentsForm({ form, update, initialMonthlyPayment }: Overpa
           />
         )}
 
-      {form.bankedSavingsDestination === 'lumpSumEachCycle' &&
-        (form.rateAfterFixedTermMode === 'remortgageToNewFixed' || form.rateAfterFixedTermMode === 'hybrid') && (
-          <p className="field-hint">
-            Banked savings pay out automatically each time you remortgage — the month your fixed deal ends, right
-            before the follow-on/variable window below — rather than on a fixed calendar schedule
-            {form.rateAfterFixedTermMode === 'hybrid' ? ' (while hybrid is still cycling through fixed deals)' : ''}.
-          </p>
-        )}
-
       {(form.rateAfterFixedTermMode === 'remortgageToNewFixed' || form.rateAfterFixedTermMode === 'hybrid') && (
         <>
           <NumberField
@@ -275,12 +266,6 @@ export function OverpaymentsForm({ form, update, initialMonthlyPayment }: Overpa
             step="1"
             labelHint="Time spent on the follow-on/variable rate between one fixed deal ending and the next one starting — only used while hybrid is still cycling through fixed deals, if that's what's selected above."
           />
-          <p className="field-hint">
-            UK product transfers with your existing lender can complete in a few working days, but that's for a
-            same-balance switch arranged in advance. Since the loan amount changes here (the lump sum is paid
-            first), a full remortgage — typically 4–8 weeks — is the more realistic assumption; 2 months is a
-            reasonable default.
-          </p>
         </>
       )}
     </fieldset>

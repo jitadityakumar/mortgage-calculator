@@ -11,7 +11,7 @@ export function AdvancedConfig({ form, update }: AdvancedConfigProps) {
     <fieldset className="card">
       <legend>
         <button type="button" className="disclosure" onClick={() => update('showAdvanced', !form.showAdvanced)}>
-          {form.showAdvanced ? '▾' : '▸'} Advanced assumptions (defaults are estimates — verify against your real offer)
+          {form.showAdvanced ? '▾' : '▸'} Advanced assumptions
         </button>
       </legend>
       {form.showAdvanced && (
