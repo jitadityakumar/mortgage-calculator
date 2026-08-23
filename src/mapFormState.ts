@@ -1,6 +1,20 @@
 import type { MortgageDefaults, MortgageInputs } from './api/types';
 import { parseNum } from './format';
+import { genId } from './genId';
 import type { FormState, LumpSumFormRow } from './types/formState';
+
+/**
+ * Matches formatMonthCompact's display convention (years elapsed = whole
+ * 12-month blocks, months = the remainder) so a lump sum entered as e.g.
+ * "2y 2m" lands on the schedule month the table itself labels "2y2m".
+ */
+function yearMonthToAtMonth(year: number, month: number): number {
+  return year * 12 + month;
+}
+
+function atMonthToYearMonth(atMonth: number): { year: number; month: number } {
+  return { year: Math.floor(atMonth / 12), month: atMonth % 12 };
+}
 
 export function mapFormStateToInputs(form: FormState): MortgageInputs {
   return {
@@ -27,8 +41,11 @@ export function mapFormStateToInputs(form: FormState): MortgageInputs {
     remortgageGapMonths: Math.round(parseNum(form.remortgageGapMonths)),
 
     lumpSums: form.lumpSums
-      .filter((l) => l.month.trim() !== '' && l.amount.trim() !== '')
-      .map((l) => ({ atMonth: Math.round(parseNum(l.month)), amount: parseNum(l.amount) })),
+      .filter((l) => l.year.trim() !== '' && l.month.trim() !== '' && l.amount.trim() !== '')
+      .map((l) => ({
+        atMonth: yearMonthToAtMonth(Math.round(parseNum(l.year)), Math.round(parseNum(l.month))),
+        amount: parseNum(l.amount),
+      })),
 
     config: {
       annualOverpaymentAllowancePct: parseNum(form.annualOverpaymentAllowancePct),
@@ -63,11 +80,10 @@ export function mapInputsToFormState(
     Object.entries(inputs.config ?? {}).filter(([, v]) => v !== null && v !== undefined),
   );
   const config = { ...defaults.config, ...definedOverrides };
-  const lumpSums: LumpSumFormRow[] = (inputs.lumpSums ?? []).map((l) => ({
-    id: crypto.randomUUID(),
-    month: String(l.atMonth),
-    amount: String(l.amount),
-  }));
+  const lumpSums: LumpSumFormRow[] = (inputs.lumpSums ?? []).map((l) => {
+    const { year, month } = atMonthToYearMonth(l.atMonth);
+    return { id: genId(), year: String(year), month: String(month), amount: String(l.amount) };
+  });
 
   return {
     ...currentForm,

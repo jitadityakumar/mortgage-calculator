@@ -10,6 +10,10 @@ import { calculateSdlt } from '../engine';
 
 export interface LumpSumFormRow {
   id: string;
+  /** Whole years elapsed (matches formatMonthCompact's display convention —
+   * see mapFormState.ts's yearMonthToAtMonth/atMonthToYearMonth). */
+  year: string;
+  /** Remainder months (0-11) on top of `year`. */
   month: string;
   amount: string;
 }
@@ -61,8 +65,9 @@ export interface FormState {
  * Builds the form's initial pre-fill state from the backend's GET
  * /api/v1/defaults response — the single source of truth for every
  * calculation-fallback default (see backend/app/engine/defaults.json).
- * Fields below with no calculation-default equivalent (propertyValue,
- * showAdvanced) are pure UI demo/convenience values, kept as literals here.
+ * Fields below with no calculation-default equivalent (showAdvanced) are
+ * pure UI demo/convenience values, kept as literals here. `propertyValue`
+ * comes from `defaults` too (admin-editable, see AdminPage.tsx), same as
  * `depositSavings`
  * and `isFirstTimeBuyer` come from `defaults` (admin-editable, see
  * AdminPage.tsx) rather than being literals here, unlike the fields above.
@@ -74,7 +79,7 @@ export interface FormState {
  * status. When false, `deposit` is just `defaults.deposit` as-is.
  */
 export function buildDefaultFormState(defaults: MortgageDefaults): FormState {
-  const propertyValue = '450000';
+  const propertyValue = String(defaults.propertyValue);
   const depositSavings = String(defaults.depositSavings);
   const isFirstTimeBuyer = defaults.isFirstTimeBuyer;
   const deposit = defaults.deriveDepositFromSavings

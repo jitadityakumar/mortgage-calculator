@@ -48,6 +48,11 @@ class MortgageDefaults(BaseModel):
     seed/reset target — see app.engine.config.load_seed_defaults()."""
 
     config: MortgageConfig
+    # Feeds only the frontend's initial pre-fill (buildDefaultFormState) — not
+    # wired into resolve_mortgage_inputs(): propertyValue stays a required
+    # field on every MortgageInputs request, by design (see MortgageInputs
+    # below), so there's no "unset propertyValue" case for a default to fill.
+    propertyValue: float
     variableRateAnnualPct: float
     remortgageGapMonths: float
     savingsPayoutIntervalMonths: float

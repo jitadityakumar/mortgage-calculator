@@ -67,11 +67,15 @@ def validate_defaults(d: MortgageDefaults) -> list[str]:
     values that would silently poison every partial /calculate request,
     saved-calculation resolution, and the FE's form pre-fill from then on —
     unlike a bad one-off /calculate call, a bad default persists until
-    someone finds the admin page again. Mirrors validate_inputs' style;
-    can't check deposit < propertyValue here since there's no propertyValue
-    in this context — that stays a per-request check."""
+    someone finds the admin page again. Mirrors validate_inputs' style.
+    d.propertyValue only feeds the frontend's pre-fill (see MortgageDefaults),
+    not any calculation, so it isn't cross-checked against d.deposit here —
+    every real request supplies its own propertyValue, checked against its
+    own deposit in validate_inputs()."""
     issues: list[str] = []
 
+    if d.propertyValue <= 0:
+        issues.append("Default property value must be positive.")
     if d.deposit < 0:
         issues.append("Default deposit cannot be negative.")
     if d.depositSavings < 0:

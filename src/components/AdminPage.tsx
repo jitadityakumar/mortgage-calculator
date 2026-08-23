@@ -17,6 +17,7 @@ import { NumberField } from './NumberField';
  * (Number('') === 0) and block retyping. Parsed back to numbers only on
  * save, via parseNum. */
 interface DefaultsFormState {
+  propertyValue: string;
   deposit: string;
   depositSavings: string;
   isFirstTimeBuyer: boolean;
@@ -46,6 +47,7 @@ interface DefaultsFormState {
 
 function toFormState(d: MortgageDefaults): DefaultsFormState {
   return {
+    propertyValue: String(d.propertyValue),
     deposit: String(d.deposit),
     depositSavings: String(d.depositSavings),
     isFirstTimeBuyer: d.isFirstTimeBuyer,
@@ -76,6 +78,7 @@ function toFormState(d: MortgageDefaults): DefaultsFormState {
 
 function toMortgageDefaults(form: DefaultsFormState): MortgageDefaults {
   return {
+    propertyValue: parseNum(form.propertyValue),
     deposit: parseNum(form.deposit),
     depositSavings: parseNum(form.depositSavings),
     isFirstTimeBuyer: form.isFirstTimeBuyer,
@@ -211,6 +214,14 @@ export function AdminPage() {
           <fieldset className="card">
             <legend>Mortgage details</legend>
             <div className="field-grid">
+              <NumberField
+                label="Property value"
+                prefix="£"
+                value={form.propertyValue}
+                onChange={(v) => update('propertyValue', v)}
+                step="1000"
+                hint="Starting value for the calculator's 'Property value' field."
+              />
               <NumberField
                 label="Deposit savings"
                 prefix="£"

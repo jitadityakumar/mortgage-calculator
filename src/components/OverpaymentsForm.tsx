@@ -1,5 +1,6 @@
 import type { FormState, LumpSumFormRow } from '../types/formState';
 import { formatGBP, parseNum } from '../format';
+import { genId } from '../genId';
 import { NumberField } from './NumberField';
 import { InfoIcon } from './InfoIcon';
 
@@ -11,7 +12,7 @@ interface OverpaymentsFormProps {
 }
 
 function newLumpSumRow(): LumpSumFormRow {
-  return { id: crypto.randomUUID(), month: '', amount: '' };
+  return { id: genId(), year: '', month: '', amount: '' };
 }
 
 export function OverpaymentsForm({ form, update, initialMonthlyPayment }: OverpaymentsFormProps) {
@@ -150,13 +151,24 @@ export function OverpaymentsForm({ form, update, initialMonthlyPayment }: Overpa
         {form.lumpSums.map((row) => (
           <div className="lump-sum-row" key={row.id}>
             <label className="field field-inline">
-              <span className="field-label">Month #</span>
+              <span className="field-label">Year</span>
               <input
                 type="number"
-                min="1"
+                min="0"
+                value={row.year}
+                onChange={(e) => updateLumpSum(row.id, { year: e.target.value })}
+                placeholder="e.g. 2"
+              />
+            </label>
+            <label className="field field-inline">
+              <span className="field-label">Month</span>
+              <input
+                type="number"
+                min="0"
+                max="11"
                 value={row.month}
                 onChange={(e) => updateLumpSum(row.id, { month: e.target.value })}
-                placeholder="e.g. 12"
+                placeholder="e.g. 2"
               />
             </label>
             <label className="field field-inline">

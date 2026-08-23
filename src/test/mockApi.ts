@@ -23,6 +23,7 @@ export const MOCK_DEFAULTS: MortgageDefaults = {
     arrangementFee: 0,
     arrangementFeeAddedToLoan: false,
   },
+  propertyValue: 450_000,
   variableRateAnnualPct: 7.25,
   remortgageGapMonths: 2,
   savingsPayoutIntervalMonths: 6,

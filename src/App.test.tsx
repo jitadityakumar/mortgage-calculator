@@ -126,15 +126,17 @@ describe('App', () => {
     await waitFor(() => expect(screen.queryByText(/You'd save/)).not.toBeInTheDocument());
 
     await user.click(screen.getByText('+ Add lump sum'));
-    const monthInput = getInputForLabel('Month #');
+    const yearInput = getInputForLabel('Year');
+    const monthInput = getInputForLabel('Month');
     const amountInput = getInputForLabel('Amount');
+    await user.type(yearInput, '1');
     await user.type(monthInput, '12');
     await user.type(amountInput, '5000');
 
     expect(await screen.findByText(/You'd save/)).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Remove lump sum' }));
-    expect(screen.queryByLabelText('Month #')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Year')).not.toBeInTheDocument();
     await waitFor(() => expect(screen.queryByText(/You'd save/)).not.toBeInTheDocument());
   });
 
@@ -149,7 +151,8 @@ describe('App', () => {
 
     await user.selectOptions(getSelectForLabel('When you overpay, it should...'), 'reducePayment');
     await user.click(screen.getByText('+ Add lump sum'));
-    await user.type(getInputForLabel('Month #'), '12');
+    await user.type(getInputForLabel('Year'), '1');
+    await user.type(getInputForLabel('Month'), '12');
     await user.type(getInputForLabel('Amount'), '5000');
 
     expect(await screen.findByText('With overpayments')).toBeInTheDocument();

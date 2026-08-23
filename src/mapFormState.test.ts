@@ -12,6 +12,7 @@ const TEST_DEFAULTS: MortgageDefaults = {
     arrangementFee: 0,
     arrangementFeeAddedToLoan: false,
   },
+  propertyValue: 450_000,
   variableRateAnnualPct: 7.25,
   remortgageGapMonths: 2,
   savingsPayoutIntervalMonths: 6,
@@ -121,7 +122,8 @@ describe('mapInputsToFormState / mapFormStateToInputs round trip', () => {
   it('round-trips lump sums', () => {
     const form = mapInputsToFormState(FULL_INPUTS, DEFAULT_FORM_STATE, TEST_DEFAULTS);
     expect(form.lumpSums).toHaveLength(1);
-    expect(form.lumpSums[0].month).toBe('12');
+    expect(form.lumpSums[0].year).toBe('1');
+    expect(form.lumpSums[0].month).toBe('0');
     expect(form.lumpSums[0].amount).toBe('5000');
   });
 

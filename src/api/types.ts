@@ -139,6 +139,10 @@ export interface SavedCalculationDetail {
  */
 export interface MortgageDefaults {
   config: MortgageConfig;
+  /** Feeds only buildDefaultFormState's initial pre-fill, not any
+   * calculation — propertyValue stays a required field on every
+   * MortgageInputs request. */
+  propertyValue: number;
   variableRateAnnualPct: number;
   remortgageGapMonths: number;
   savingsPayoutIntervalMonths: number;
