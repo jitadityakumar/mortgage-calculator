@@ -24,7 +24,7 @@ function getSelectForLabel(labelText: string): HTMLSelectElement {
 /** Turns off both overpayment mechanisms (recurring amount + lump-sum cycling),
  * leaving only whatever the test adds on top (e.g. a manual lump sum). */
 async function turnOffAllOverpayments(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getByText("None — don't overpay monthly (savings can still fund a lump sum below)"));
+  await user.click(screen.getByText("None"));
   await user.click(screen.getByText('Just keep as savings (no lump sum)'));
 }
 
@@ -173,7 +173,7 @@ describe('App', () => {
     await user.click(screen.getByText('Fixed amount'));
     expect(screen.queryByText('Use up to this % of my penalty-free allowance')).not.toBeInTheDocument();
 
-    await user.click(screen.getByText("None — don't overpay monthly (savings can still fund a lump sum below)"));
+    await user.click(screen.getByText("None"));
     expect(screen.queryByText('Use up to this % of my penalty-free allowance')).not.toBeInTheDocument();
   });
 
@@ -205,7 +205,7 @@ describe('App', () => {
   it('the pool-in-use hints stay visible for a lump-sum-cycle strategy even while staying on the variable rate', async () => {
     const user = userEvent.setup();
     await renderApp();
-    await user.click(screen.getByText("None — don't overpay monthly (savings can still fund a lump sum below)"));
+    await user.click(screen.getByText("None"));
     expect(await screen.findByText(/leaving about/)).toBeInTheDocument();
 
     await user.click(screen.getByText('Move onto the variable rate and stay there'));

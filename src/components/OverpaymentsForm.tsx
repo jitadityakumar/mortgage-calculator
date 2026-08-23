@@ -85,7 +85,7 @@ export function OverpaymentsForm({ form, update, initialMonthlyPayment }: Overpa
             checked={form.monthlyOverpaymentAmountMode === 'none'}
             onChange={() => update('monthlyOverpaymentAmountMode', 'none')}
           />
-          <span>None — don't overpay monthly (savings can still fund a lump sum below)</span>
+          <span>None</span>
         </label>
         <label className="radio-field">
           <input
@@ -103,7 +103,7 @@ export function OverpaymentsForm({ form, update, initialMonthlyPayment }: Overpa
             checked={form.monthlyOverpaymentAmountMode === 'auto'}
             onChange={() => update('monthlyOverpaymentAmountMode', 'auto')}
           />
-          <span>Auto — calculate from savings</span>
+          <span>Auto (% of penalty free allowance)</span>
         </label>
       </div>
 
