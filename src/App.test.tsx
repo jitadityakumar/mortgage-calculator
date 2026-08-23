@@ -209,10 +209,9 @@ describe('App', () => {
     expect(await screen.findByText(/leaving about/)).toBeInTheDocument();
 
     await user.click(screen.getByText('Move onto the variable rate and stay there'));
-    // Periodic payouts still use the pool, so the hints must stay visible — this
+    // Periodic payouts still use the pool, so the hint must stay visible — this
     // combo is no longer a no-op.
     expect(screen.getByText(/leaving about/)).toBeInTheDocument();
-    expect(screen.getByText(/Maximizing overpayments every month/)).toBeInTheDocument();
   });
 
   it('highlights fixed-period-boundary rows in the amortization table', async () => {

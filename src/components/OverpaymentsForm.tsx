@@ -138,14 +138,6 @@ export function OverpaymentsForm({ form, update, initialMonthlyPayment }: Overpa
           payment falls over time.
         </p>
       )}
-      {poolInUse && (
-        <p className="field-hint warning">
-          Maximizing overpayments every month means less cash on hand for emergencies. Consider keeping an
-          emergency fund (roughly 3–6 months of expenses) in accessible cash first, and compare against other
-          savings/investment options — overpaid amounts aren't easily accessible again without further borrowing.
-        </p>
-      )}
-
       <div className="lump-sums">
         <div className="lump-sums-header">
           <span className="field-label">One-off lump sum overpayments</span>
