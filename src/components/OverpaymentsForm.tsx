@@ -45,7 +45,7 @@ export function OverpaymentsForm({ form, update, initialMonthlyPayment }: Overpa
           value={form.currentRent}
           onChange={(v) => update('currentRent', v)}
           step="10"
-          hint="What you pay in rent today — freed up once a mortgage payment replaces it."
+          labelHint="What you pay in rent today — freed up once a mortgage payment replaces it."
         />
         <NumberField
           label="Current monthly savings"
@@ -53,7 +53,7 @@ export function OverpaymentsForm({ form, update, initialMonthlyPayment }: Overpa
           value={form.monthlySavings}
           onChange={(v) => update('monthlySavings', v)}
           step="10"
-          hint="What you already save each month today, on top of rent."
+          labelHint="What you already save each month today, on top of rent."
         />
         <NumberField
           label="Service charge"
@@ -61,7 +61,7 @@ export function OverpaymentsForm({ form, update, initialMonthlyPayment }: Overpa
           value={form.serviceCharge}
           onChange={(v) => update('serviceCharge', v)}
           step="10"
-          hint="Recurring monthly service charge/ground rent, taken out of your rent + savings pool before overpayments."
+          labelHint="Recurring monthly service charge/ground rent, taken out of your rent + savings pool before overpayments."
         />
       </div>
 
@@ -114,7 +114,7 @@ export function OverpaymentsForm({ form, update, initialMonthlyPayment }: Overpa
           value={form.fixedMonthlyOverpayment}
           onChange={(v) => update('fixedMonthlyOverpayment', v)}
           step="10"
-          hint="Applied every month regardless of the allowance — may incur an Early Repayment Charge if it's more than the lender allows penalty-free. Whatever's left of the pool below still banks."
+          labelHint="Applied every month regardless of the allowance — may incur an Early Repayment Charge if it's more than the lender allows penalty-free. Whatever's left of the pool below still banks."
         />
       )}
 
@@ -126,7 +126,7 @@ export function OverpaymentsForm({ form, update, initialMonthlyPayment }: Overpa
           onChange={(v) => update('targetAllowanceUtilizationPct', v)}
           step="5"
           min="0"
-          hint="Defaults to 50% of the lender's full allowance (set in Advanced assumptions). Spread evenly across the year's 12 months rather than maxed out early, so you don't stop overpaying partway through. Raise it toward 100% to use more of the allowance, or lower it to deliberately keep more in savings instead of overpaying."
+          labelHint="Defaults to 50% of the lender's full allowance (set in Advanced assumptions). Spread evenly across the year's 12 months rather than maxed out early, so you don't stop overpaying partway through. Raise it toward 100% to use more of the allowance, or lower it to deliberately keep more in savings instead of overpaying."
         />
       )}
 
@@ -256,7 +256,7 @@ export function OverpaymentsForm({ form, update, initialMonthlyPayment }: Overpa
             onChange={(v) => update('savingsPayoutIntervalMonths', v)}
             step="1"
             min="1"
-            hint={
+            labelHint={
               form.rateAfterFixedTermMode === 'hybrid'
                 ? "Only applies once hybrid switches onto the variable rate for good: the first payout lands that month, then repeats on this schedule. While it's still cycling through fixed deals, savings pay out at each remortgage instead."
                 : "The first payout lands the month your fixed deal ends, then repeats on this schedule — e.g. 3 for every quarter, 6 for twice a year, or 12, 24, etc. for whole years."
@@ -281,7 +281,7 @@ export function OverpaymentsForm({ form, update, initialMonthlyPayment }: Overpa
             value={form.remortgageGapMonths}
             onChange={(v) => update('remortgageGapMonths', v)}
             step="1"
-            hint="Time spent on the follow-on/variable rate between one fixed deal ending and the next one starting — only used while hybrid is still cycling through fixed deals, if that's what's selected above."
+            labelHint="Time spent on the follow-on/variable rate between one fixed deal ending and the next one starting — only used while hybrid is still cycling through fixed deals, if that's what's selected above."
           />
           <p className="field-hint">
             UK product transfers with your existing lender can complete in a few working days, but that's for a
