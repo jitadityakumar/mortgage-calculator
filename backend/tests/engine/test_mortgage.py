@@ -658,15 +658,20 @@ def test_auto_min_savings_overpays_zero_when_the_reserve_alone_exceeds_the_pool(
     assert result.schedule[0].savingsPotBalance > 0
 
 
-def test_auto_min_savings_with_zero_reserve_behaves_identically_to_plain_auto():
-    plain_auto = calculate_mortgage(
+def test_auto_min_savings_with_zero_reserve_behaves_identically_to_plain_auto_at_100_pct_target():
+    # 'autoMinSavings' always paces at 100% of the allowance regardless of
+    # targetAllowanceUtilizationPct — once a minimum's protected, there's no
+    # reason to hold back further — so with a zero reserve it should match
+    # plain 'auto' *at 100%*, not at whatever targetAllowanceUtilizationPct
+    # happens to be set to.
+    plain_auto_full = calculate_mortgage(
         base_inputs(
             {
                 "fixedTermMonths": 24,
                 "currentRent": 3000,
                 "monthlySavings": 0,
                 "monthlyOverpaymentAmountMode": "auto",
-                "targetAllowanceUtilizationPct": 50,
+                "targetAllowanceUtilizationPct": 100,
             }
         )
     )
@@ -682,8 +687,40 @@ def test_auto_min_savings_with_zero_reserve_behaves_identically_to_plain_auto():
             }
         )
     )
-    assert plain_auto.totalOverpaid == pytest.approx(zero_reserve.totalOverpaid, abs=0.01)
-    assert plain_auto.payoffMonth == zero_reserve.payoffMonth
+    assert plain_auto_full.totalOverpaid == pytest.approx(zero_reserve.totalOverpaid, abs=0.01)
+    assert plain_auto_full.payoffMonth == zero_reserve.payoffMonth
+
+
+def test_auto_min_savings_ignores_target_allowance_utilization_pct():
+    # Directly proves the override: two autoMinSavings runs that differ only
+    # in targetAllowanceUtilizationPct produce identical schedules, since
+    # that field has no effect on this mode.
+    low_target = calculate_mortgage(
+        base_inputs(
+            {
+                "fixedTermMonths": 24,
+                "currentRent": 3000,
+                "monthlySavings": 0,
+                "monthlyOverpaymentAmountMode": "autoMinSavings",
+                "targetAllowanceUtilizationPct": 10,
+                "minMonthlySavingsReserve": 500,
+            }
+        )
+    )
+    high_target = calculate_mortgage(
+        base_inputs(
+            {
+                "fixedTermMonths": 24,
+                "currentRent": 3000,
+                "monthlySavings": 0,
+                "monthlyOverpaymentAmountMode": "autoMinSavings",
+                "targetAllowanceUtilizationPct": 90,
+                "minMonthlySavingsReserve": 500,
+            }
+        )
+    )
+    assert low_target.totalOverpaid == pytest.approx(high_target.totalOverpaid, abs=0.01)
+    assert low_target.payoffMonth == high_target.payoffMonth
 
 
 def test_effective_savings_grows_as_the_payment_falls_under_reduce_payment_mode():

@@ -129,7 +129,7 @@ export function OverpaymentsForm({ form, update, initialMonthlyPayment }: Overpa
         />
       )}
 
-      {(form.monthlyOverpaymentAmountMode === 'auto' || form.monthlyOverpaymentAmountMode === 'autoMinSavings') && (
+      {form.monthlyOverpaymentAmountMode === 'auto' && (
         <NumberField
           label="Use up to this % of my penalty-free allowance"
           suffix="%"
@@ -149,7 +149,7 @@ export function OverpaymentsForm({ form, update, initialMonthlyPayment }: Overpa
           onChange={(v) => update('minMonthlySavingsReserve', v)}
           step="50"
           min="0"
-          labelHint="Reserved from your rent + savings pool before overpaying, so you always keep at least this much in savings each month — subject to what's actually available. If the pool that month is smaller than this, it all banks and nothing overpays, rather than dipping below the minimum."
+          labelHint="Reserved from your rent + savings pool first, so you always keep at least this much in savings each month — subject to what's actually available. Whatever's left goes toward overpaying, up to 100% of your penalty-free allowance. If the pool that month is smaller than this, it all banks and nothing overpays, rather than dipping below the minimum."
         />
       )}
 

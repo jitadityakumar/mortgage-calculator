@@ -358,7 +358,7 @@ export function AdminPage() {
                 onChange={(v) => update('targetAllowanceUtilizationPct', v)}
                 step="5"
                 min="0"
-                hint="Used when 'Monthly overpayment amount' is 'Auto' or 'Auto (minimum monthly savings)' — also the calculator's initial pre-fill for that field."
+                hint="Used when 'Monthly overpayment amount' is 'Auto' — also the calculator's initial pre-fill for that field."
               />
               <NumberField
                 label="Minimum monthly savings"
@@ -367,7 +367,7 @@ export function AdminPage() {
                 onChange={(v) => update('minMonthlySavingsReserve', v)}
                 step="50"
                 min="0"
-                hint="Used when 'Monthly overpayment amount' is 'Auto (minimum monthly savings)' — also the calculator's initial pre-fill for that field."
+                hint="Used when 'Monthly overpayment amount' is 'Auto (minimum monthly savings)' — the rest of the pool always overpays up to 100% of the allowance, also the calculator's initial pre-fill for that field."
               />
             </div>
           </fieldset>

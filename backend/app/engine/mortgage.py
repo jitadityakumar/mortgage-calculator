@@ -57,19 +57,27 @@ def _compute_recurring_overpayment_pence(
     from the pool first — a soft floor: if the pool is smaller than the
     reserve, the reserve is capped at the pool (min()), so the recurring
     overpayment is simply 0 that month rather than needing a special case.
+    Once the reserve is set aside, 'autoMinSavings' paces up to 100% of the
+    penalty-free allowance regardless of `target_utilization_pct` (that
+    field only applies to plain 'auto') — having already protected a
+    minimum, there's no reason to hold back further.
 
     The lookahead call site doesn't track a real allowance_used_this_year or
-    manual lump sums, so it passes 0 for both — harmless, since with
-    target_utilization_pct <= 100 the resulting installment never exceeds
-    allowance_limit_this_year and so never hits that cap anyway.
+    manual lump sums, so it passes 0 for both — harmless, since with an
+    effective target_utilization_pct <= 100 the resulting installment never
+    exceeds allowance_limit_this_year and so never hits that cap anyway.
     """
     if overpayment_amount_mode == "fixed":
         return fixed_monthly_overpayment_pence
     if overpayment_amount_mode in ("auto", "autoMinSavings") and auto_pacing_active:
         pool_pence = effective_savings_pence
+        effective_target_utilization_pct = target_utilization_pct
         if overpayment_amount_mode == "autoMinSavings":
             pool_pence -= min(pool_pence, min_monthly_savings_reserve_pence)
-        target_allowance_limit_this_year = js_round((allowance_limit_this_year * target_utilization_pct) / 100)
+            effective_target_utilization_pct = 100
+        target_allowance_limit_this_year = js_round(
+            (allowance_limit_this_year * effective_target_utilization_pct) / 100
+        )
         remaining_target_pence = max(
             0, target_allowance_limit_this_year - auto_target_used_this_year - manual_lump_sum_this_month
         )
