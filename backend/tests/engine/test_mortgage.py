@@ -827,7 +827,7 @@ def test_hybrid_lookahead_inherits_the_real_mid_year_allowance_state_instead_of_
     )
     kwargs = dict(
         balance_pence=200_000,  # £2,000
-        principal_pence=200_000,
+        fixed_period_original_principal_pence=200_000,
         savings_pot_pence=0,
         start_month=2,  # mid-year: month 2 of the allowance year, 10 months left in it
         remaining_total_term_months=300,
@@ -842,6 +842,7 @@ def test_hybrid_lookahead_inherits_the_real_mid_year_allowance_state_instead_of_
         banked_destination="keepAsSavings",
         savings_payout_interval_months=6,
         allowance_limit_this_year=250_000,  # £2,500 target for the year
+        erc_year_anchor_month=1,
     )
 
     clears_when_nothing_used_yet = _would_clear_within_window_on_variable(
@@ -1165,3 +1166,303 @@ def test_calculate_with_all_fields_given_ignores_defaults_entirely():
     # resolve_mortgage_inputs() as a no-op.
     assert result.principal == 200_000
     assert len(result.schedule) == 300
+
+
+# calculateMortgage — issue #12: per-mortgage ERC allowance anchor
+# (is_new_fixed_period_start / erc_year_anchor_month / fixed_period_original_principal_pence)
+
+
+def test_auto_overpayments_resume_immediately_at_the_new_fixed_deal_not_11_months_late():
+    # The issue #12 repro, verbatim from implementation.md: on the app's own
+    # seeded defaults (propertyValue 250,000 / deposit 50,000, fixedTermMonths
+    # 60 — a multiple of 12), the SVR-gap lump sum used to silence 'auto'
+    # overpayments from month 62 all the way to month 72 on `main`, because
+    # the old absolute (month - 1) % 12 clock's next reset always landed on
+    # the gap month, so the gap sweep consumed the *next* fixed deal's entire
+    # pacing budget too. The fix anchors the reset to the new fixed deal's
+    # own start (month 63) instead, so pacing resumes the same month deal 2
+    # begins.
+    result = calculate_mortgage(MortgageInputs(includeSchedule=True, propertyValue=250_000, deposit=50_000))
+    assert result.schedule[62].month == 63
+    # Deal 2 starts month 63 — 'auto' must be nonzero right away, and stay
+    # nonzero through the full window `main` silenced (62-72), not just its
+    # first month.
+    assert all(e.overpaymentPaid > 0 for e in result.schedule[62:72])
+
+
+def test_original_basis_reanchors_the_erc_allowance_to_each_deals_own_opening_balance():
+    # allowanceBasis: 'original' is meant to grant a percentage of *this
+    # deal's* opening balance, not the original loan amount from 25 years
+    # earlier. `main` never re-snapshots the basis on remortgage — a
+    # pre-existing bug this fix also corrects (folded in for free, since it
+    # shares the same reset block). A lump sum at deal 2's first month should
+    # be charged ERC against deal 2's own opening balance.
+    result = calculate_mortgage(
+        cycling_inputs(
+            {
+                "config": {
+                    "annualOverpaymentAllowancePct": 10,
+                    "allowanceBasis": "original",
+                    "ercRateOnExcessPct": 3,
+                    "ercAppliesDuringFixedTermOnly": True,
+                },
+                "lumpSums": [{"atMonth": 27, "amount": 40_000}],  # deal 2 starts month 27 (24-month fixed + 2-month gap)
+            }
+        )
+    )
+    deal_2_start = result.schedule[26]
+    assert deal_2_start.month == 27
+    deal_2_opening_balance = deal_2_start.openingBalance
+    original_principal = result.principal
+    assert deal_2_opening_balance < original_principal  # sanity: balance has amortized down since origination
+
+    expected_allowance = round(deal_2_opening_balance * 0.10, 2)
+    expected_erc = round(max(0, 40_000 - expected_allowance) * 0.03, 2)
+    assert deal_2_start.ercCharged == pytest.approx(expected_erc, abs=0.02)
+
+    # And prove it's not still using the stale original-loan basis (the
+    # pre-existing bug): that would charge a different, smaller ERC.
+    stale_allowance = round(original_principal * 0.10, 2)
+    stale_erc = round(max(0, 40_000 - stale_allowance) * 0.03, 2)
+    assert deal_2_start.ercCharged != pytest.approx(stale_erc, abs=0.02)
+
+
+def test_erc_allowance_year_does_not_reset_at_gap_start_only_at_the_next_deals_start():
+    # The cruder, already-rejected proposal reset the allowance clock on
+    # *both* regime transitions (gap-start and deal-start) — is_regime_start
+    # fires on both. is_new_fixed_period_start must fire only on deal-start,
+    # so two overpayments straddling the gap boundary still share one
+    # allowance year: the second one sees the first one's usage, not a fresh
+    # allowance.
+    result = calculate_mortgage(
+        base_inputs(
+            {
+                "fixedTermMonths": 20,
+                "variableRateAnnualPct": 7,
+                "rateAfterFixedTermMode": "remortgageToNewFixed",
+                "remortgageGapMonths": 6,  # gap starts month 21, deal 2 starts month 27
+                "config": {
+                    "annualOverpaymentAllowancePct": 10,
+                    "allowanceBasis": "outstanding",
+                    "ercRateOnExcessPct": 3,
+                    "ercAppliesDuringFixedTermOnly": False,
+                },
+                "lumpSums": [
+                    {"atMonth": 20, "amount": 15_000},  # last fixed month, well within the allowance
+                    {"atMonth": 21, "amount": 15_000},  # first gap month
+                ],
+            }
+        )
+    )
+    assert result.schedule[19].ercCharged == 0  # first lump alone stays within the allowance
+    # If the clock wrongly reset at gap-start, the second lump would also
+    # land inside a fresh allowance and stay ERC-free. It doesn't — the two
+    # lump sums share one allowance year, so the combined ~£30k blows past a
+    # ~10% allowance on a ~£190-200k balance.
+    assert result.schedule[20].ercCharged > 0
+
+
+def test_hybrid_post_commit_never_re_anchors_the_erc_year_or_original_basis_again():
+    # is_new_fixed_period_start requires `and not hybrid_committed` — without
+    # it, position_in_cycle == 0 keeps wrapping true every cycle_length
+    # months for the entire permanent-variable stretch after a hybrid
+    # commit, re-anchoring erc_year_anchor_month and
+    # fixed_period_original_principal_pence when nothing should be resetting
+    # (scenario 3 has ended; the loan is now in scenario 2, stayOnVariable).
+    # With a 0-month gap, cycle_length == fixedTermMonths == 24, so
+    # position_in_cycle == 0 recurs every 24 months: deal-starts land at
+    # months 1, 25, 49, 73, ... This config commits at month 72 (the first
+    # boundary where the remaining term guarantees payoff within one more
+    # fixed deal's window) — well after the last pre-commit deal-start at
+    # month 49 — so month 73 is exactly the kind of post-commit wrap the
+    # guard exists for.
+    result = calculate_mortgage(
+        base_inputs(
+            {
+                "propertyValue": 250_000,
+                "deposit": 200_000,
+                "fixedTermMonths": 24,
+                "variableRateAnnualPct": 7.25,
+                "totalTermMonths": 96,
+                "rateAfterFixedTermMode": "hybrid",
+                "remortgageGapMonths": 0,
+                "monthlyOverpaymentAmountMode": "none",
+                "config": {
+                    "annualOverpaymentAllowancePct": 10,
+                    "allowanceBasis": "original",
+                    "ercRateOnExcessPct": 3,
+                    "ercAppliesDuringFixedTermOnly": False,
+                },
+                "lumpSums": [{"atMonth": 73, "amount": 3_000}],
+            }
+        )
+    )
+    assert result.schedule[71].ratePct == 5  # month 72: still the last fixed month
+    assert result.schedule[72].ratePct == 7.25  # month 73: committed, permanently variable
+
+    # The basis frozen at commit is the balance from the *last pre-commit*
+    # deal-start (month 49), not a fresh snapshot taken at month 73's wrap.
+    frozen_basis = result.schedule[48].openingBalance
+    assert result.schedule[48].month == 49
+    expected_allowance = round(frozen_basis * 0.10, 2)
+    expected_erc = round(max(0, 3_000 - expected_allowance) * 0.03, 2)
+    assert result.schedule[72].ercCharged == pytest.approx(expected_erc, abs=0.02)
+
+    # And rule out the buggy alternative: re-anchoring at month 73 would use
+    # month 73's own (much smaller) opening balance as the basis instead,
+    # producing a visibly different ERC charge.
+    buggy_basis = result.schedule[72].openingBalance
+    buggy_allowance = round(buggy_basis * 0.10, 2)
+    buggy_erc = round(max(0, 3_000 - buggy_allowance) * 0.03, 2)
+    assert result.schedule[72].ercCharged != pytest.approx(buggy_erc, abs=0.02)
+
+
+def test_stay_on_variable_and_non_cycling_schedules_are_bit_for_bit_unchanged():
+    # Pinned golden values from `main` (pre-fix) — is_new_fixed_period_start
+    # is always False when cycling_active is False, so stayOnVariable/plain
+    # fixed-then-variable loans must be completely unaffected by this
+    # change. Confirmed identical to `main`'s own output before this fix.
+    plain = calculate_mortgage(
+        MortgageInputs(
+            includeSchedule=True,
+            propertyValue=250_000,
+            deposit=50_000,
+            fixedRateAnnualPct=5,
+            fixedTermMonths=300,
+            variableRateAnnualPct=5,
+            totalTermMonths=300,
+            currentRent=0,
+            monthlySavings=0,
+            serviceCharge=0,
+            rateAfterFixedTermMode="stayOnVariable",
+        )
+    )
+    assert plain.payoffMonth == 300
+    assert plain.totalInterestPaid == pytest.approx(150_754.02, abs=0.01)
+    assert plain.totalOverpaid == 0
+    assert plain.totalErcPaid == 0
+
+    auto_with_payouts = calculate_mortgage(
+        MortgageInputs(
+            includeSchedule=True,
+            propertyValue=250_000,
+            deposit=50_000,
+            fixedRateAnnualPct=5,
+            fixedTermMonths=24,
+            variableRateAnnualPct=7.25,
+            totalTermMonths=300,
+            currentRent=2300,
+            monthlySavings=2000,
+            serviceCharge=500,
+            monthlyOverpaymentAmountMode="auto",
+            targetAllowanceUtilizationPct=50,
+            bankedSavingsDestination="lumpSumEachCycle",
+            rateAfterFixedTermMode="stayOnVariable",
+        )
+    )
+    assert auto_with_payouts.payoffMonth == 65
+    assert auto_with_payouts.totalInterestPaid == pytest.approx(35_916.63, abs=0.01)
+    assert auto_with_payouts.totalOverpaid == pytest.approx(156_487.72, abs=0.01)
+    assert auto_with_payouts.unallocatedSavingsPot == pytest.approx(11_083.37, abs=0.01)
+
+    seeded_defaults_stay_on_variable = calculate_mortgage(
+        MortgageInputs(includeSchedule=True, propertyValue=250_000, deposit=50_000, rateAfterFixedTermMode="stayOnVariable")
+    )
+    assert seeded_defaults_stay_on_variable.payoffMonth == 67
+    assert seeded_defaults_stay_on_variable.totalInterestPaid == pytest.approx(37_860.41, abs=0.01)
+    assert seeded_defaults_stay_on_variable.totalOverpaid == pytest.approx(164_104.11, abs=0.01)
+
+
+def test_auto_pacing_stays_flat_within_each_allowance_year_when_the_gap_is_not_a_multiple_of_12():
+    # The maintainer's original sawtooth repro: a remortgageGapMonths that
+    # isn't a multiple of 12 (here 6) is exactly the case where an
+    # independently-clocked pacing budget (PR #13's rejected approach) would
+    # drift out of phase with the ERC clock and bounce. Sharing one clock
+    # (erc_year_anchor_month) for both means the recurring 'auto' installment
+    # is a flat, unchanging number throughout each fixed deal's own allowance
+    # year — no ramp, no bounce.
+    #
+    # The gap window itself (months 25-30, 55-60) is exactly as important to
+    # check as the fixed-deal windows: the gap-exclusion that keeps
+    # auto_target_used_this_year from growing during the gap could easily
+    # let the *denominator* (months_remaining_in_year) keep shrinking
+    # unopposed, ramping the installment every gap month even though the
+    # target itself never changed — a real regression an earlier version of
+    # this fix had, caught by an Opus math-correctness review pass.
+    result = calculate_mortgage(
+        MortgageInputs(
+            includeSchedule=True,
+            propertyValue=250_000,
+            deposit=50_000,
+            fixedRateAnnualPct=5,
+            fixedTermMonths=24,
+            variableRateAnnualPct=7.25,
+            totalTermMonths=200,
+            currentRent=2300,
+            monthlySavings=2000,
+            serviceCharge=500,
+            rateAfterFixedTermMode="hybrid",
+            remortgageGapMonths=6,
+            monthlyOverpaymentAmountMode="auto",
+            targetAllowanceUtilizationPct=50,
+            bankedSavingsDestination="keepAsSavings",
+            config={
+                "annualOverpaymentAllowancePct": 10,
+                "allowanceBasis": "outstanding",
+                "ercRateOnExcessPct": 3,
+                "ercAppliesDuringFixedTermOnly": True,
+            },
+        )
+    )
+    # Deal 2 runs months 31-54 (24-month fixed period starting after the
+    # first 24-month deal + 6-month gap); its first allowance year is months
+    # 31-42, entirely inside the fixed period, no lump sums, no boundary —
+    # nothing that should make the installment move.
+    year_one_installments = [result.schedule[i].overpaymentPaid for i in range(30, 42)]
+    first = year_one_installments[0]
+    for value in year_one_installments:
+        assert value == pytest.approx(first, abs=0.05)
+
+    # The gap windows: months 25-30 (before deal 2) and 55-60 (after deal 2,
+    # boundary at month 54). Each must be flat too, not ramping.
+    first_gap = [result.schedule[i].overpaymentPaid for i in range(24, 30)]
+    for value in first_gap:
+        assert value == pytest.approx(first_gap[0], abs=0.05)
+
+    second_gap = [result.schedule[i].overpaymentPaid for i in range(54, 60)]
+    for value in second_gap:
+        assert value == pytest.approx(second_gap[0], abs=0.05)
+
+
+def test_auto_pacing_never_exceeds_the_real_remaining_allowance_when_erc_applies_outside_the_fixed_term_too():
+    # Ported from PR #13 (still correct, unaffected by which clock
+    # erc_year_anchor_month uses): with ercAppliesDuringFixedTermOnly False,
+    # gap overpayments consume real allowance while being excluded from the
+    # pacing counter by the gap-exclusion gate above — without the
+    # allowance cap, the next fixed deal's pacing target (computed off the
+    # full unreduced allowance) could outrun what's actually left and
+    # trigger unexpected ERC.
+    result = calculate_mortgage(
+        base_inputs(
+            {
+                "fixedRateAnnualPct": 5,
+                "fixedTermMonths": 24,
+                "variableRateAnnualPct": 7,
+                "totalTermMonths": 120,
+                "config": {
+                    "annualOverpaymentAllowancePct": 10,
+                    "ercRateOnExcessPct": 3,
+                    "ercAppliesDuringFixedTermOnly": False,
+                },
+                "monthlyOverpaymentAmountMode": "auto",
+                "targetAllowanceUtilizationPct": 100,
+                "bankedSavingsDestination": "lumpSumEachCycle",
+                "savingsPayoutIntervalMonths": 2,
+                "rateAfterFixedTermMode": "remortgageToNewFixed",
+                "remortgageGapMonths": 2,
+                "currentRent": 2500,
+                "monthlySavings": 2000,
+            }
+        )
+    )
+    assert result.totalErcPaid == 0
