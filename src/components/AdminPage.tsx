@@ -35,6 +35,7 @@ interface DefaultsFormState {
   monthlyOverpaymentAmountMode: MonthlyOverpaymentAmountMode;
   fixedMonthlyOverpayment: string;
   targetAllowanceUtilizationPct: string;
+  minMonthlySavingsReserve: string;
   bankedSavingsDestination: BankedSavingsDestination;
   rateAfterFixedTermMode: RateAfterFixedTermMode;
   annualOverpaymentAllowancePct: string;
@@ -65,6 +66,7 @@ function toFormState(d: MortgageDefaults): DefaultsFormState {
     monthlyOverpaymentAmountMode: d.monthlyOverpaymentAmountMode,
     fixedMonthlyOverpayment: String(d.fixedMonthlyOverpayment),
     targetAllowanceUtilizationPct: String(d.targetAllowanceUtilizationPct),
+    minMonthlySavingsReserve: String(d.minMonthlySavingsReserve),
     bankedSavingsDestination: d.bankedSavingsDestination,
     rateAfterFixedTermMode: d.rateAfterFixedTermMode,
     annualOverpaymentAllowancePct: String(d.config.annualOverpaymentAllowancePct),
@@ -96,6 +98,7 @@ function toMortgageDefaults(form: DefaultsFormState): MortgageDefaults {
     monthlyOverpaymentAmountMode: form.monthlyOverpaymentAmountMode,
     fixedMonthlyOverpayment: parseNum(form.fixedMonthlyOverpayment),
     targetAllowanceUtilizationPct: parseNum(form.targetAllowanceUtilizationPct),
+    minMonthlySavingsReserve: parseNum(form.minMonthlySavingsReserve),
     bankedSavingsDestination: form.bankedSavingsDestination,
     rateAfterFixedTermMode: form.rateAfterFixedTermMode,
     config: {
@@ -337,6 +340,7 @@ export function AdminPage() {
                   <option value="none">None</option>
                   <option value="fixed">Fixed amount</option>
                   <option value="auto">Auto (paced to the allowance)</option>
+                  <option value="autoMinSavings">Auto (minimum monthly savings)</option>
                 </select>
               </label>
               <NumberField
@@ -354,7 +358,16 @@ export function AdminPage() {
                 onChange={(v) => update('targetAllowanceUtilizationPct', v)}
                 step="5"
                 min="0"
-                hint="Used when 'Monthly overpayment amount' is 'Auto' — also the calculator's initial pre-fill for that field."
+                hint="Used when 'Monthly overpayment amount' is 'Auto' or 'Auto (minimum monthly savings)' — also the calculator's initial pre-fill for that field."
+              />
+              <NumberField
+                label="Minimum monthly savings"
+                prefix="£"
+                value={form.minMonthlySavingsReserve}
+                onChange={(v) => update('minMonthlySavingsReserve', v)}
+                step="50"
+                min="0"
+                hint="Used when 'Monthly overpayment amount' is 'Auto (minimum monthly savings)' — also the calculator's initial pre-fill for that field."
               />
             </div>
           </fieldset>

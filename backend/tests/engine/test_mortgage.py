@@ -606,6 +606,86 @@ def test_auto_mode_stops_the_monthly_drip_once_past_the_fixed_term_when_banked_s
     assert any(e.lumpSumPaid > 0 for e in result.schedule)
 
 
+def test_auto_min_savings_reserves_the_minimum_before_pacing_and_overpays_less_than_plain_auto():
+    plain_auto = calculate_mortgage(
+        base_inputs(
+            {
+                "fixedTermMonths": 24,
+                "currentRent": 3000,
+                "monthlySavings": 0,
+                "monthlyOverpaymentAmountMode": "auto",
+                "targetAllowanceUtilizationPct": 100,
+            }
+        )
+    )
+    with_reserve = calculate_mortgage(
+        base_inputs(
+            {
+                "fixedTermMonths": 24,
+                "currentRent": 3000,
+                "monthlySavings": 0,
+                "monthlyOverpaymentAmountMode": "autoMinSavings",
+                "targetAllowanceUtilizationPct": 100,
+                "minMonthlySavingsReserve": 500,
+            }
+        )
+    )
+    # Same pacing formula, but run against a pool that's £500 smaller every
+    # month, so it never out-overpays plain 'auto' and always banks at least
+    # the reserve.
+    assert with_reserve.schedule[0].overpaymentPaid <= plain_auto.schedule[0].overpaymentPaid
+    assert with_reserve.schedule[0].savingsPotBalance >= 500 - 0.05
+
+
+def test_auto_min_savings_overpays_zero_when_the_reserve_alone_exceeds_the_pool():
+    # £3,000 rent+savings pool, £3,500 minimum reserve: reserve is capped at
+    # whatever's actually there (soft floor, not a hard guarantee) — the whole
+    # pool banks and nothing overpays, rather than dipping below the minimum
+    # or erroring.
+    result = calculate_mortgage(
+        base_inputs(
+            {
+                "fixedTermMonths": 24,
+                "currentRent": 3000,
+                "monthlySavings": 0,
+                "monthlyOverpaymentAmountMode": "autoMinSavings",
+                "targetAllowanceUtilizationPct": 100,
+                "minMonthlySavingsReserve": 3500,
+            }
+        )
+    )
+    assert result.schedule[0].overpaymentPaid == 0
+    assert result.schedule[0].savingsPotBalance > 0
+
+
+def test_auto_min_savings_with_zero_reserve_behaves_identically_to_plain_auto():
+    plain_auto = calculate_mortgage(
+        base_inputs(
+            {
+                "fixedTermMonths": 24,
+                "currentRent": 3000,
+                "monthlySavings": 0,
+                "monthlyOverpaymentAmountMode": "auto",
+                "targetAllowanceUtilizationPct": 50,
+            }
+        )
+    )
+    zero_reserve = calculate_mortgage(
+        base_inputs(
+            {
+                "fixedTermMonths": 24,
+                "currentRent": 3000,
+                "monthlySavings": 0,
+                "monthlyOverpaymentAmountMode": "autoMinSavings",
+                "targetAllowanceUtilizationPct": 50,
+                "minMonthlySavingsReserve": 0,
+            }
+        )
+    )
+    assert plain_auto.totalOverpaid == pytest.approx(zero_reserve.totalOverpaid, abs=0.01)
+    assert plain_auto.payoffMonth == zero_reserve.payoffMonth
+
+
 def test_effective_savings_grows_as_the_payment_falls_under_reduce_payment_mode():
     result = calculate_mortgage(
         base_inputs(
@@ -838,6 +918,7 @@ def test_hybrid_lookahead_inherits_the_real_mid_year_allowance_state_instead_of_
         overpayment_amount_mode="auto",
         fixed_monthly_overpayment_pence=0,
         target_utilization_pct=100,
+        min_monthly_savings_reserve_pence=0,
         monthly_budget_pool_pence=180_000,  # £1,800/month pool, well above the tiny base payment
         banked_destination="keepAsSavings",
         savings_payout_interval_months=6,

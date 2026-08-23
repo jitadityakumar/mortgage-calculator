@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 OverpaymentMode = Literal["reduceTerm", "reducePayment"]
 AllowanceBasis = Literal["outstanding", "original"]
-MonthlyOverpaymentAmountMode = Literal["none", "fixed", "auto"]
+MonthlyOverpaymentAmountMode = Literal["none", "fixed", "auto", "autoMinSavings"]
 BankedSavingsDestination = Literal["lumpSumEachCycle", "keepAsSavings"]
 RateAfterFixedTermMode = Literal["remortgageToNewFixed", "stayOnVariable", "hybrid"]
 
@@ -78,6 +78,12 @@ class MortgageDefaults(BaseModel):
     monthlyOverpaymentAmountMode: MonthlyOverpaymentAmountMode
     fixedMonthlyOverpayment: float
     targetAllowanceUtilizationPct: float
+    # Used when monthlyOverpaymentAmountMode is 'autoMinSavings' — reserved
+    # from the effective savings pool before the 'auto' pacing logic runs
+    # against what's left. A soft floor: if the pool that month is smaller
+    # than this, the reserve is capped at the pool (overpayment is 0), never
+    # borrowed from elsewhere.
+    minMonthlySavingsReserve: float
     bankedSavingsDestination: BankedSavingsDestination
     rateAfterFixedTermMode: RateAfterFixedTermMode
     # None when loaded from defaults.json (load_seed_defaults()) rather than
@@ -109,6 +115,7 @@ class MortgageInputs(BaseModel):
     monthlyOverpaymentAmountMode: Optional[MonthlyOverpaymentAmountMode] = None
     fixedMonthlyOverpayment: Optional[float] = None
     targetAllowanceUtilizationPct: Optional[float] = None
+    minMonthlySavingsReserve: Optional[float] = None
 
     bankedSavingsDestination: Optional[BankedSavingsDestination] = None
     savingsPayoutIntervalMonths: Optional[float] = None
