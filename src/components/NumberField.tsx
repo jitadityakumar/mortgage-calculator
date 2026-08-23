@@ -1,3 +1,5 @@
+import { InfoIcon } from './InfoIcon';
+
 interface NumberFieldProps {
   label: string;
   value: string;
@@ -7,12 +9,16 @@ interface NumberFieldProps {
   step?: string;
   min?: string;
   hint?: string;
+  labelHint?: string;
 }
 
-export function NumberField({ label, value, onChange, suffix, prefix, step = '1', min = '0', hint }: NumberFieldProps) {
+export function NumberField({ label, value, onChange, suffix, prefix, step = '1', min = '0', hint, labelHint }: NumberFieldProps) {
   return (
     <label className="field">
-      <span className="field-label">{label}</span>
+      <span className="field-label">
+        {label}
+        {labelHint && <InfoIcon text={labelHint} />}
+      </span>
       <div className="field-input">
         {prefix && <span className="field-affix">{prefix}</span>}
         <input

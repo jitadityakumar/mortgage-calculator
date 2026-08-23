@@ -1,5 +1,6 @@
 import type { FormState } from '../types/formState';
 import { NumberField } from './NumberField';
+import { InfoIcon } from './InfoIcon';
 
 interface CoreInputsFormProps {
   form: FormState;
@@ -28,7 +29,7 @@ export function CoreInputsForm({ form, update, updateDepositDriver }: CoreInputs
           value={form.depositSavings}
           onChange={(v) => updateDepositDriver('depositSavings', v)}
           step="1000"
-          hint="Deposit auto-fills as this minus SDLT — edit deposit directly below to override."
+          labelHint="Deposit auto-fills as this minus SDLT — edit deposit directly below to override."
         />
         <NumberField
           label="Deposit"
@@ -57,7 +58,7 @@ export function CoreInputsForm({ form, update, updateDepositDriver }: CoreInputs
           value={form.variableRatePct}
           onChange={(v) => update('variableRatePct', v)}
           step="0.05"
-          hint="Typically the lender's SVR — check your real deal; ~7–7.5% is a rough current average."
+          labelHint="Typically the lender's SVR — check your real deal; ~7–7.5% is a rough current average."
         />
         <NumberField
           label="Total mortgage term"
@@ -73,12 +74,11 @@ export function CoreInputsForm({ form, update, updateDepositDriver }: CoreInputs
           checked={form.isFirstTimeBuyer}
           onChange={(e) => updateDepositDriver('isFirstTimeBuyer', e.target.checked)}
         />
-        <span>I'm a first-time buyer (affects SDLT, which feeds the deposit auto-fill above)</span>
+        <span>
+          I'm a first-time buyer
+          <InfoIcon text="Affects SDLT, which feeds the deposit auto-fill above." />
+        </span>
       </label>
-      <p className="field-hint">
-        Your actual rate depends on your loan-to-value band and the lender/broker you use — this
-        tool doesn't estimate market rates for you, only what a given rate means for your repayments.
-      </p>
     </fieldset>
   );
 }
