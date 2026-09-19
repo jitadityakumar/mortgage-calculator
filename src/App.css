@@ -416,6 +416,24 @@ fieldset {
   margin-top: 8px;
 }
 
+/* position: sticky tracks the nearest scroll container, so an overflow-x wrapper
+   would pin the header to the wrapper instead of the page. On wide screens drop the
+   wrapper's overflow so the header sticks to the viewport; narrow screens keep
+   horizontal scroll (header scrolls with the page there). */
+@media (min-width: 901px) {
+  .table-scroll {
+    overflow-x: visible;
+  }
+
+  .schedule-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--bg-card);
+    box-shadow: inset 0 -1px 0 var(--border);
+  }
+}
+
 .savings-callout {
   margin-top: 14px;
   font-size: 14px;
