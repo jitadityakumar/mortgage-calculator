@@ -15,6 +15,11 @@ export function ResultsSummary({ comparison, hasOverpayments }: ResultsSummaryPr
 
       <div className="stat-grid">
         <div className="stat">
+          <span className="stat-label">Amount borrowed</span>
+          <span className="stat-value">{formatGBP(withOverpayments.amountBorrowed)}</span>
+          <span className="stat-delta">{withOverpayments.ltvPct}% LTV at start</span>
+        </div>
+        <div className="stat">
           <span className="stat-label">Monthly payment{withOverpayments.monthlyPayments.length > 1 ? ' (from the start)' : ''}</span>
           <span className="stat-value">{formatGBP(withOverpayments.monthlyPayments[0]?.payment ?? 0, true)}</span>
         </div>

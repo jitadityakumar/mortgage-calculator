@@ -155,6 +155,12 @@ class MonthlyPaymentPeriod(BaseModel):
 class MortgageResult(BaseModel):
     schedule: list[MonthlyScheduleEntry]
     principal: float
+    # propertyValue - deposit: what the buyer borrows, excluding any arrangement
+    # fee added to the loan (unlike `principal`, which includes it).
+    amountBorrowed: float
+    # Loan-to-value at mortgage start: amountBorrowed / propertyValue, as a
+    # percentage rounded to 2 decimal places.
+    ltvPct: float
     # One entry per payment recast at a rate/regime change (initial payment,
     # each remortgage onto a new fixed deal, each switch to/from variable) —
     # NOT every reducePayment-mode recast, which happens near-monthly and is

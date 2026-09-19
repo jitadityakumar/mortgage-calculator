@@ -597,6 +597,8 @@ def calculate_mortgage(inputs: MortgageInputs, defaults: Optional[MortgageDefaul
     return MortgageResult(
         schedule=schedule if inputs.includeSchedule else [],
         principal=pence_to_pounds(principal_pence),
+        amountBorrowed=pence_to_pounds(base_principal_pence),
+        ltvPct=js_round(base_principal_pence / pounds_to_pence(inputs.propertyValue) * 10000) / 100,
         monthlyPayments=monthly_payment_periods,
         rateAfterFixedTermMode=rate_after_fixed_term_mode,
         payoffMonth=payoff_month,
