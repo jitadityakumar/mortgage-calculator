@@ -118,6 +118,8 @@ function buildResult(inputs: MortgageInputs, applyOverpayment: boolean): Mortgag
   return {
     schedule,
     principal,
+    amountBorrowed: principal,
+    ltvPct: Math.round((principal / inputs.propertyValue) * 10000) / 100,
     monthlyPayments,
     rateAfterFixedTermMode: inputs.rateAfterFixedTermMode ?? MOCK_DEFAULTS.rateAfterFixedTermMode,
     payoffMonth,

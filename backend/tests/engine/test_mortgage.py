@@ -115,6 +115,27 @@ def test_total_paid_is_property_value_plus_sdlt_plus_total_interest():
     assert result.totalPaid == pytest.approx(expected_total_paid, abs=0.01)
 
 
+def test_amount_borrowed_and_ltv_exclude_an_arrangement_fee_added_to_the_loan():
+    inputs = base_inputs(
+        {
+            "propertyValue": 300_000,
+            "deposit": 45_000,
+            "config": {"arrangementFee": 1_999, "arrangementFeeAddedToLoan": True},
+        }
+    )
+    result = calculate_mortgage(inputs)
+    assert result.amountBorrowed == 255_000
+    assert result.ltvPct == 85
+    # `principal` still includes the fee — the new fields deliberately don't.
+    assert result.principal == 256_999
+
+
+def test_ltv_is_rounded_to_two_decimal_places():
+    result = calculate_mortgage(base_inputs({"propertyValue": 300_000, "deposit": 100_000}))
+    assert result.amountBorrowed == 200_000
+    assert result.ltvPct == 66.67
+
+
 # calculateMortgage — fixed to variable rate transition (no cycling)
 
 

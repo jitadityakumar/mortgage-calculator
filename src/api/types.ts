@@ -84,6 +84,12 @@ export interface MonthlyPaymentPeriod {
 export interface MortgageResult {
   schedule: MonthlyScheduleEntry[];
   principal: number;
+  /** propertyValue - deposit, excluding any arrangement fee added to the loan
+   * (unlike `principal`, which includes it). */
+  amountBorrowed: number;
+  /** Loan-to-value at mortgage start (amountBorrowed / propertyValue), as a
+   * percentage rounded to 2 decimal places. */
+  ltvPct: number;
   /** One entry per payment recast at a rate/regime change (initial payment,
    * each remortgage, each switch to/from variable), in order. */
   monthlyPayments: MonthlyPaymentPeriod[];
