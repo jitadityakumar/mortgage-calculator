@@ -33,7 +33,6 @@ export function mapFormStateToInputs(form: FormState): MortgageInputs {
 
     monthlyOverpaymentAmountMode: form.monthlyOverpaymentAmountMode,
     fixedMonthlyOverpayment: parseNum(form.fixedMonthlyOverpayment),
-    targetAllowanceUtilizationPct: parseNum(form.targetAllowanceUtilizationPct),
     minMonthlySavingsReserve: parseNum(form.minMonthlySavingsReserve),
 
     bankedSavingsDestination: form.bankedSavingsDestination,
@@ -109,7 +108,6 @@ export function mapInputsToFormState(
     // literal or the current form's value, now that these are real fields on
     // MortgageDefaults instead of pure FE literals.
     fixedMonthlyOverpayment: String(inputs.fixedMonthlyOverpayment ?? defaults.fixedMonthlyOverpayment),
-    targetAllowanceUtilizationPct: String(inputs.targetAllowanceUtilizationPct ?? defaults.targetAllowanceUtilizationPct),
     minMonthlySavingsReserve: String(inputs.minMonthlySavingsReserve ?? defaults.minMonthlySavingsReserve),
 
     bankedSavingsDestination: inputs.bankedSavingsDestination ?? currentForm.bankedSavingsDestination,

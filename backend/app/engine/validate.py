@@ -43,8 +43,6 @@ def validate_inputs(inputs: MortgageInputs) -> list[str]:
         issues.append("Current rent cannot be negative.")
     if inputs.serviceCharge < 0:
         issues.append("Service charge cannot be negative.")
-    if inputs.targetAllowanceUtilizationPct < 0 or inputs.targetAllowanceUtilizationPct > 100:
-        issues.append("Target allowance utilization must be between 0 and 100%.")
     if inputs.minMonthlySavingsReserve < 0:
         issues.append("Minimum monthly savings cannot be negative.")
     if inputs.remortgageGapMonths is not None and (
@@ -108,8 +106,6 @@ def validate_defaults(d: MortgageDefaults) -> list[str]:
         issues.append("Default service charge cannot be negative.")
     if d.fixedMonthlyOverpayment < 0:
         issues.append("Default fixed monthly overpayment cannot be negative.")
-    if not (0 <= d.targetAllowanceUtilizationPct <= 100):
-        issues.append("Default target allowance utilization must be between 0 and 100%.")
     if d.minMonthlySavingsReserve < 0:
         issues.append("Default minimum monthly savings cannot be negative.")
     if not (0 <= d.config.annualOverpaymentAllowancePct <= 100):

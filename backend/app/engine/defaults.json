@@ -22,9 +22,8 @@
   "currentRent": 2300,
   "monthlySavings": 2000,
   "serviceCharge": 500,
-  "monthlyOverpaymentAmountMode": "auto",
+  "monthlyOverpaymentAmountMode": "autoMinSavings",
   "fixedMonthlyOverpayment": 300,
-  "targetAllowanceUtilizationPct": 50,
   "minMonthlySavingsReserve": 1000,
   "bankedSavingsDestination": "lumpSumEachCycle",
   "rateAfterFixedTermMode": "remortgageToNewFixed"

@@ -77,6 +77,30 @@ def test_create_strips_surrounding_whitespace_from_name(client: TestClient) -> N
     assert response.json()["name"] == "Plan"
 
 
+def test_get_coerces_a_legacy_auto_value_left_over_from_before_it_was_removed(client: TestClient) -> None:
+    # Regression: a saved calculation written before plain 'auto' was
+    # removed (only 'autoMinSavings' remains) can still contain the literal
+    # 'auto' string on disk — see coerce_legacy_overpayment_mode(). Loading
+    # it must not 500.
+    import json
+
+    from app.db.models import SavedCalculation
+    from app.db.session import get_db
+
+    db = next(app.dependency_overrides[get_db]())
+    legacy_inputs = {**SAMPLE_INPUTS, "monthlyOverpaymentAmountMode": "auto", "targetAllowanceUtilizationPct": 50}
+    row = SavedCalculation(name="Old plan", inputs_json=json.dumps(legacy_inputs))
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    saved_id = row.id
+    db.close()
+
+    response = client.get(f"/api/v1/saved-calculations/{saved_id}")
+    assert response.status_code == 200
+    assert response.json()["inputs"]["monthlyOverpaymentAmountMode"] == "autoMinSavings"
+
+
 def test_list_returns_all_saved_newest_first(client: TestClient) -> None:
     first = client.post("/api/v1/saved-calculations", json={"name": "Plan A", "inputs": SAMPLE_INPUTS}).json()
     second = client.post("/api/v1/saved-calculations", json={"name": "Plan B", "inputs": SAMPLE_INPUTS}).json()

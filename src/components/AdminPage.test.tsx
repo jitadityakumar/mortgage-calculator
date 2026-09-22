@@ -113,24 +113,24 @@ describe('AdminPage', () => {
     ).toBe(false);
   });
 
-  it('edits fixed monthly overpayment and target allowance utilization, and saves', async () => {
+  it('edits fixed monthly overpayment and minimum monthly savings, and saves', async () => {
     const user = userEvent.setup();
     await renderAdminPage();
 
     expect(getInputForLabel('Fixed monthly overpayment').value).toBe('300');
-    expect(getInputForLabel('Target allowance utilization').value).toBe('50');
+    expect(getInputForLabel('Minimum monthly savings').value).toBe('1000');
 
     const fixedInput = getInputForLabel('Fixed monthly overpayment');
     await user.clear(fixedInput);
     await user.type(fixedInput, '450');
-    const targetInput = getInputForLabel('Target allowance utilization');
-    await user.clear(targetInput);
-    await user.type(targetInput, '75');
+    const reserveInput = getInputForLabel('Minimum monthly savings');
+    await user.clear(reserveInput);
+    await user.type(reserveInput, '750');
     await user.click(screen.getByRole('button', { name: 'Save' }));
 
     await screen.findByText('Saved.');
     expect(getInputForLabel('Fixed monthly overpayment').value).toBe('450');
-    expect(getInputForLabel('Target allowance utilization').value).toBe('75');
+    expect(getInputForLabel('Minimum monthly savings').value).toBe('750');
   });
 
   it('edits current rent, monthly savings, and service charge, and saves', async () => {

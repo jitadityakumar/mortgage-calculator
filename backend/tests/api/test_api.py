@@ -115,8 +115,8 @@ def test_calculate_with_only_property_value_uses_defaults() -> None:
     # zero-rate threshold), not the flat `deposit` default.
     assert body["principal"] == 250_000 - DERIVED_DEPOSIT_250K
     # Every other field defaults too, including the rent+savings pool and
-    # 'auto' overpayment mode — real overpayments pay this off well before
-    # the default 300-month term.
+    # 'autoMinSavings' overpayment mode — real overpayments pay this off well
+    # before the default 300-month term.
     assert len(body["schedule"]) == 61
 
 
@@ -127,12 +127,12 @@ def test_calculate_with_property_value_and_deposit_only_uses_defaults_for_rest()
     assert response.status_code == 200
     body = response.json()
     assert body["principal"] == 200_000
-    # rateAfterFixedTermMode now defaults to remortgageToNewFixed (was
-    # implicitly stayOnVariable before this field existed) — the loan cycles
-    # back into a new fixed deal after the fixed term + remortgage gap instead
-    # of paying off shortly after moving to the variable rate, extending the
-    # payoff schedule (was 67 months).
-    assert len(body["schedule"]) == 123
+    # rateAfterFixedTermMode defaults to remortgageToNewFixed, cycling back
+    # into a new fixed deal after the fixed term + remortgage gap.
+    # autoMinSavings now overpays straight through the SVR gap (reserving only
+    # minMonthlySavingsReserve) instead of banking the whole pool and waiting
+    # for a lump-sum payout, which pays this off faster than before.
+    assert len(body["schedule"]) == 62
 
 
 def test_get_defaults_returns_the_shared_default_values() -> None:
@@ -145,7 +145,7 @@ def test_get_defaults_returns_the_shared_default_values() -> None:
     assert body["totalTermMonths"] == 300
     assert body["variableRateAnnualPct"] == 7.25
     assert body["overpaymentMode"] == "reduceTerm"
-    assert body["monthlyOverpaymentAmountMode"] == "auto"
+    assert body["monthlyOverpaymentAmountMode"] == "autoMinSavings"
     assert body["bankedSavingsDestination"] == "lumpSumEachCycle"
     assert body["config"]["annualOverpaymentAllowancePct"] == 10
 

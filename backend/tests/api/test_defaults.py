@@ -46,11 +46,35 @@ def test_get_defaults_on_fresh_db_returns_shipped_values(client: TestClient) -> 
     assert body["deposit"] == SEED.deposit
     assert body["fixedRateAnnualPct"] == SEED.fixedRateAnnualPct
     assert body["fixedMonthlyOverpayment"] == SEED.fixedMonthlyOverpayment
-    assert body["targetAllowanceUtilizationPct"] == SEED.targetAllowanceUtilizationPct
     assert body["currentRent"] == SEED.currentRent
     assert body["monthlySavings"] == SEED.monthlySavings
     assert body["serviceCharge"] == SEED.serviceCharge
     assert body["rateAfterFixedTermMode"] == SEED.rateAfterFixedTermMode
+
+
+def test_get_defaults_coerces_a_legacy_auto_value_left_over_from_before_it_was_removed(client: TestClient) -> None:
+    # Regression: monthlyOverpaymentAmountMode's plain 'auto' value was
+    # removed in favor of 'autoMinSavings' alone, but a defaults_config row
+    # written before that removal (a named Docker volume survives an app
+    # upgrade untouched) can still contain the literal 'auto' string, which
+    # no longer validates against MortgageDefaults — see
+    # coerce_legacy_overpayment_mode(). Every /calculate, /compare, and
+    # /defaults call would 500 on such a row without the coercion.
+    import json
+
+    from app.db.models import DefaultsConfig
+    from app.db.session import get_db
+
+    db = next(app.dependency_overrides[get_db]())
+    legacy = {**SEED.model_dump(exclude={"updatedAt"}), "monthlyOverpaymentAmountMode": "auto"}
+    legacy["targetAllowanceUtilizationPct"] = 50  # also stale; must be silently ignored, not fatal
+    db.add(DefaultsConfig(id=1, defaults_json=json.dumps(legacy)))
+    db.commit()
+    db.close()
+
+    response = client.get("/api/v1/defaults")
+    assert response.status_code == 200
+    assert response.json()["monthlyOverpaymentAmountMode"] == "autoMinSavings"
 
 
 def test_put_defaults_persists_and_is_reflected_by_later_get(client: TestClient) -> None:
@@ -212,7 +236,6 @@ def test_post_reset_defaults_restores_shipped_values(client: TestClient) -> None
         {"fixedTermMonths": 400, "totalTermMonths": 300},
         {"depositSavings": -1},
         {"fixedMonthlyOverpayment": -1},
-        {"targetAllowanceUtilizationPct": 101},
         {"minMonthlySavingsReserve": -1},
         {"currentRent": -1},
         {"monthlySavings": -1},

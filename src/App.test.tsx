@@ -168,16 +168,16 @@ describe('App', () => {
     expect(screen.queryByText(/leaving about/)).not.toBeInTheDocument();
   });
 
-  it('the target allowance % field only appears in auto mode', async () => {
+  it('the minimum monthly savings field only appears in autoMinSavings mode', async () => {
     const user = userEvent.setup();
     await renderApp();
-    expect(screen.getByText('Use up to this % of my penalty-free allowance')).toBeInTheDocument();
+    expect(screen.getByText('Minimum monthly savings')).toBeInTheDocument();
 
     await user.click(screen.getByText('Fixed amount'));
-    expect(screen.queryByText('Use up to this % of my penalty-free allowance')).not.toBeInTheDocument();
+    expect(screen.queryByText('Minimum monthly savings')).not.toBeInTheDocument();
 
     await user.click(screen.getByText("None"));
-    expect(screen.queryByText('Use up to this % of my penalty-free allowance')).not.toBeInTheDocument();
+    expect(screen.queryByText('Minimum monthly savings')).not.toBeInTheDocument();
   });
 
   it('the remortgage gap field only appears when remortgaging into a new fixed deal', async () => {

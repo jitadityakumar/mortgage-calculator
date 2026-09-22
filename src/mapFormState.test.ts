@@ -27,9 +27,8 @@ const TEST_DEFAULTS: MortgageDefaults = {
   currentRent: 2300,
   monthlySavings: 2000,
   serviceCharge: 500,
-  monthlyOverpaymentAmountMode: 'auto',
+  monthlyOverpaymentAmountMode: 'autoMinSavings',
   fixedMonthlyOverpayment: 300,
-  targetAllowanceUtilizationPct: 50,
   minMonthlySavingsReserve: 1000,
   bankedSavingsDestination: 'lumpSumEachCycle',
   rateAfterFixedTermMode: 'remortgageToNewFixed',
@@ -52,7 +51,6 @@ const FULL_INPUTS: MortgageInputs = {
   serviceCharge: 500,
   monthlyOverpaymentAmountMode: 'fixed',
   fixedMonthlyOverpayment: 300,
-  targetAllowanceUtilizationPct: 75,
   minMonthlySavingsReserve: 800,
   bankedSavingsDestination: 'keepAsSavings',
   savingsPayoutIntervalMonths: 24,
@@ -92,7 +90,6 @@ describe('mapInputsToFormState / mapFormStateToInputs round trip', () => {
     expect(form.savingsPayoutIntervalMonths).toBe(String(TEST_DEFAULTS.savingsPayoutIntervalMonths));
     expect(form.remortgageGapMonths).toBe(String(TEST_DEFAULTS.remortgageGapMonths));
     expect(form.fixedMonthlyOverpayment).toBe(String(TEST_DEFAULTS.fixedMonthlyOverpayment));
-    expect(form.targetAllowanceUtilizationPct).toBe(String(TEST_DEFAULTS.targetAllowanceUtilizationPct));
     expect(form.minMonthlySavingsReserve).toBe(String(TEST_DEFAULTS.minMonthlySavingsReserve));
     expect(form.currentRent).toBe(String(TEST_DEFAULTS.currentRent));
     expect(form.monthlySavings).toBe(String(TEST_DEFAULTS.monthlySavings));

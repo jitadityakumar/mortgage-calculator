@@ -8,7 +8,7 @@
 
 export type OverpaymentMode = 'reduceTerm' | 'reducePayment';
 export type AllowanceBasis = 'outstanding' | 'original';
-export type MonthlyOverpaymentAmountMode = 'none' | 'fixed' | 'auto' | 'autoMinSavings';
+export type MonthlyOverpaymentAmountMode = 'none' | 'fixed' | 'autoMinSavings';
 export type BankedSavingsDestination = 'lumpSumEachCycle' | 'keepAsSavings';
 export type RateAfterFixedTermMode = 'remortgageToNewFixed' | 'stayOnVariable' | 'hybrid';
 
@@ -43,7 +43,6 @@ export interface MortgageInputs {
 
   monthlyOverpaymentAmountMode?: MonthlyOverpaymentAmountMode;
   fixedMonthlyOverpayment?: number;
-  targetAllowanceUtilizationPct?: number;
   minMonthlySavingsReserve?: number;
 
   bankedSavingsDestination?: BankedSavingsDestination;
@@ -172,9 +171,7 @@ export interface MortgageDefaults {
   serviceCharge: number;
   monthlyOverpaymentAmountMode: MonthlyOverpaymentAmountMode;
   fixedMonthlyOverpayment: number;
-  targetAllowanceUtilizationPct: number;
-  /** Used when monthlyOverpaymentAmountMode is 'autoMinSavings' — see
-   * backend/app/engine/types.py's MortgageDefaults for the full behavior. */
+  /** See backend/app/engine/types.py's MortgageDefaults for the full behavior. */
   minMonthlySavingsReserve: number;
   bankedSavingsDestination: BankedSavingsDestination;
   rateAfterFixedTermMode: RateAfterFixedTermMode;

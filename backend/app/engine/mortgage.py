@@ -42,44 +42,56 @@ def _compute_recurring_overpayment_pence(
     *,
     overpayment_amount_mode: str,
     fixed_monthly_overpayment_pence: int,
-    auto_pacing_active: bool,
+    allowance_applies: bool,
     effective_savings_pence: int,
     allowance_limit_this_year: int,
     allowance_used_this_year: int,
-    target_utilization_pct: float,
     auto_target_used_this_year: int,
     months_remaining_in_year: int,
     min_monthly_savings_reserve_pence: int = 0,
     manual_lump_sum_this_month: int = 0,
 ) -> int:
     """Shared by the main loop and `_would_clear_within_window_on_variable`'s
-    lookahead. 'autoMinSavings' is 'auto' with a fixed reserve subtracted
+    lookahead. 'autoMinSavings' always reserves `min_monthly_savings_reserve_pence`
     from the pool first — a soft floor: if the pool is smaller than the
     reserve, the reserve is capped at the pool (min()), so the recurring
     overpayment is simply 0 that month rather than needing a special case.
-    Once the reserve is set aside, 'autoMinSavings' paces up to 100% of the
-    penalty-free allowance regardless of `target_utilization_pct` (that
-    field only applies to plain 'auto') — having already protected a
-    minimum, there's no reason to hold back further.
+
+    What happens to the rest of the pool depends on `allowance_applies`:
+    - True (fixed-rate period, or a config that charges ERC outside it too):
+      paced up to 100% of the penalty-free allowance across the months left
+      in the allowance year, same as before.
+    - False (a variable-rate month with no ERC/allowance limit in play — the
+      SVR remortgage gap, or an indefinite post-fixed variable period): no
+      cap or pacing needed at all, so the entire remainder of the pool goes
+      straight to overpayment every month instead of banking until the next
+      lump-sum payout.
+
+    This is deliberately independent of `bankedSavingsDestination`. It
+    changes 'keepAsSavings' behavior too, not just 'lumpSumEachCycle': the
+    old code kept pacing (rather than dumping in full) whenever
+    `bankedSavingsDestination != "lumpSumEachCycle"`, on the reasoning that
+    'keepAsSavings' has no periodic payout to eventually sweep the banked
+    excess, so pacing was the only thing keeping money in savings at all.
+    But once `allowance_applies` is False there is no allowance left to pace
+    *against* — the reserve alone is what "keep as savings" now means for
+    that stretch, and the rest overpays immediately regardless of
+    destination, same as 'lumpSumEachCycle'.
 
     The lookahead call site doesn't track a real allowance_used_this_year or
-    manual lump sums, so it passes 0 for both — harmless, since with an
-    effective target_utilization_pct <= 100 the resulting installment never
-    exceeds allowance_limit_this_year and so never hits that cap anyway.
+    manual lump sums, so it passes 0 for both — harmless, since the paced
+    installment never exceeds allowance_limit_this_year and so never hits
+    that cap anyway.
     """
     if overpayment_amount_mode == "fixed":
         return fixed_monthly_overpayment_pence
-    if overpayment_amount_mode in ("auto", "autoMinSavings") and auto_pacing_active:
+    if overpayment_amount_mode == "autoMinSavings":
         pool_pence = effective_savings_pence
-        effective_target_utilization_pct = target_utilization_pct
-        if overpayment_amount_mode == "autoMinSavings":
-            pool_pence -= min(pool_pence, min_monthly_savings_reserve_pence)
-            effective_target_utilization_pct = 100
-        target_allowance_limit_this_year = js_round(
-            (allowance_limit_this_year * effective_target_utilization_pct) / 100
-        )
+        pool_pence -= min(pool_pence, min_monthly_savings_reserve_pence)
+        if not allowance_applies:
+            return pool_pence
         remaining_target_pence = max(
-            0, target_allowance_limit_this_year - auto_target_used_this_year - manual_lump_sum_this_month
+            0, allowance_limit_this_year - auto_target_used_this_year - manual_lump_sum_this_month
         )
         remaining_real_allowance_for_pacing_pence = max(
             0, allowance_limit_this_year - allowance_used_this_year - manual_lump_sum_this_month
@@ -105,7 +117,6 @@ def _would_clear_within_window_on_variable(
     overpayment_mode: str,
     overpayment_amount_mode: str,
     fixed_monthly_overpayment_pence: int,
-    target_utilization_pct: float,
     min_monthly_savings_reserve_pence: int,
     monthly_budget_pool_pence: int,
     banked_destination: str,
@@ -175,21 +186,13 @@ def _would_clear_within_window_on_variable(
 
         effective_savings = max(0, monthly_budget_pool_pence - pay)
 
-        # Mirrors the main loop's auto_pacing_active: once ERC-free
-        # (allowance_applies False) and the pot pays out as a lump sum
-        # anyway, the monthly 'auto' drip stops pacing itself — the payout
-        # already sweeps the banked pot, so a parallel drip would only
-        # relabel money one month early.
-        auto_pacing_active = allowance_applies or banked_destination != "lumpSumEachCycle"
-
         recurring_overpayment = _compute_recurring_overpayment_pence(
             overpayment_amount_mode=overpayment_amount_mode,
             fixed_monthly_overpayment_pence=fixed_monthly_overpayment_pence,
-            auto_pacing_active=auto_pacing_active,
+            allowance_applies=allowance_applies,
             effective_savings_pence=effective_savings,
             allowance_limit_this_year=allowance_limit_this_year,
             allowance_used_this_year=0,
-            target_utilization_pct=target_utilization_pct,
             auto_target_used_this_year=auto_target_used_this_year,
             months_remaining_in_year=12 - ((month - erc_year_anchor_month) % 12),
             min_monthly_savings_reserve_pence=min_monthly_savings_reserve_pence,
@@ -276,7 +279,6 @@ def calculate_mortgage(inputs: MortgageInputs, defaults: Optional[MortgageDefaul
         ),
     )
     fixed_monthly_overpayment_pence = pounds_to_pence(inputs.fixedMonthlyOverpayment)
-    target_utilization_pct = inputs.targetAllowanceUtilizationPct
     min_monthly_savings_reserve_pence = pounds_to_pence(inputs.minMonthlySavingsReserve)
     monthly_budget_pool_pence = max(
         0,
@@ -423,21 +425,20 @@ def calculate_mortgage(inputs: MortgageInputs, defaults: Optional[MortgageDefaul
 
         effective_savings_pence = max(0, monthly_budget_pool_pence - payment)
 
-        auto_pacing_active = allowance_applies or banked_destination != "lumpSumEachCycle"
-
         # Frozen (not decremented) during the SVR gap, mirroring
         # auto_target_used_this_year's own gap-exclusion below — a gap month
         # shouldn't shrink the divisor here any more than it should grow the
         # numerator there, or the installment would ramp every gap month even
-        # though nothing about the target actually changed.
+        # though nothing about the target actually changed. Only matters
+        # while allowance_applies is True — the no-allowance branch below
+        # doesn't use this divisor at all.
         recurring_overpayment_pence = _compute_recurring_overpayment_pence(
             overpayment_amount_mode=overpayment_amount_mode,
             fixed_monthly_overpayment_pence=fixed_monthly_overpayment_pence,
-            auto_pacing_active=auto_pacing_active,
+            allowance_applies=allowance_applies,
             effective_savings_pence=effective_savings_pence,
             allowance_limit_this_year=allowance_limit_this_year,
             allowance_used_this_year=allowance_used_this_year,
-            target_utilization_pct=target_utilization_pct,
             auto_target_used_this_year=auto_target_used_this_year,
             months_remaining_in_year=12 - months_elapsed_this_year_for_pacing,
             min_monthly_savings_reserve_pence=min_monthly_savings_reserve_pence,
@@ -534,7 +535,6 @@ def calculate_mortgage(inputs: MortgageInputs, defaults: Optional[MortgageDefaul
                 overpayment_mode=mode,
                 overpayment_amount_mode=overpayment_amount_mode,
                 fixed_monthly_overpayment_pence=fixed_monthly_overpayment_pence,
-                target_utilization_pct=target_utilization_pct,
                 min_monthly_savings_reserve_pence=min_monthly_savings_reserve_pence,
                 monthly_budget_pool_pence=monthly_budget_pool_pence,
                 banked_destination=banked_destination,

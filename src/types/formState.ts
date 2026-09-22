@@ -34,7 +34,6 @@ export interface FormState {
 
   monthlyOverpaymentAmountMode: MonthlyOverpaymentAmountMode;
   fixedMonthlyOverpayment: string;
-  targetAllowanceUtilizationPct: string;
   minMonthlySavingsReserve: string;
 
   bankedSavingsDestination: BankedSavingsDestination;
@@ -103,7 +102,6 @@ export function buildDefaultFormState(defaults: MortgageDefaults): FormState {
 
     monthlyOverpaymentAmountMode: defaults.monthlyOverpaymentAmountMode,
     fixedMonthlyOverpayment: String(defaults.fixedMonthlyOverpayment),
-    targetAllowanceUtilizationPct: String(defaults.targetAllowanceUtilizationPct),
     minMonthlySavingsReserve: String(defaults.minMonthlySavingsReserve),
 
     bankedSavingsDestination: defaults.bankedSavingsDestination,

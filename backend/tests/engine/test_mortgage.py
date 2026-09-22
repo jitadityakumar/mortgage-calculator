@@ -372,13 +372,6 @@ def test_rejects_a_negative_deposit():
         calculate_mortgage(base_inputs({"deposit": -1}))
 
 
-def test_rejects_a_target_allowance_utilization_outside_0_100():
-    with pytest.raises(MortgageValidationError):
-        calculate_mortgage(base_inputs({"targetAllowanceUtilizationPct": -1}))
-    with pytest.raises(MortgageValidationError):
-        calculate_mortgage(base_inputs({"targetAllowanceUtilizationPct": 101}))
-
-
 def test_rejects_a_negative_or_non_integer_remortgage_gap():
     with pytest.raises(MortgageValidationError):
         calculate_mortgage(base_inputs({"remortgageGapMonths": -1}))
@@ -447,14 +440,15 @@ def test_mode_none_with_destination_keep_as_savings_the_pool_has_zero_effect_on_
     assert with_pool.totalOverpaid == 0
 
 
-def test_mode_auto_applies_current_rent_plus_monthly_savings_minus_scheduled_payment_as_overpayment_when_it_fits_the_allowance():
+def test_mode_auto_min_savings_applies_current_rent_plus_monthly_savings_minus_scheduled_payment_as_overpayment_when_it_fits_the_allowance():
     result = calculate_mortgage(
         base_inputs(
             {
                 "fixedTermMonths": 300,
                 "currentRent": 1000,
                 "monthlySavings": 400,
-                "monthlyOverpaymentAmountMode": "auto",
+                "monthlyOverpaymentAmountMode": "autoMinSavings",
+                "minMonthlySavingsReserve": 0,
             }
         )
     )
@@ -464,14 +458,15 @@ def test_mode_auto_applies_current_rent_plus_monthly_savings_minus_scheduled_pay
     assert result.payoffMonth < 300
 
 
-def test_mode_auto_never_applies_a_negative_overpayment_when_the_pool_is_smaller_than_the_payment():
+def test_mode_auto_min_savings_never_applies_a_negative_overpayment_when_the_pool_is_smaller_than_the_payment():
     result = calculate_mortgage(
         base_inputs(
             {
                 "fixedTermMonths": 300,
                 "currentRent": 100,
                 "monthlySavings": 0,
-                "monthlyOverpaymentAmountMode": "auto",
+                "monthlyOverpaymentAmountMode": "autoMinSavings",
+                "minMonthlySavingsReserve": 0,
             }
         )
     )
@@ -524,63 +519,26 @@ def test_mode_none_with_destination_lump_sum_each_cycle_banks_the_entire_pool_fo
     assert any(e.lumpSumPaid > 0 for e in result.schedule)
 
 
-def test_a_lower_target_allowance_utilization_pct_banks_more_and_overpays_less_in_auto_mode():
-    full = calculate_mortgage(
-        base_inputs(
-            {
-                "fixedTermMonths": 24,
-                "currentRent": 5000,
-                "monthlySavings": 0,
-                "monthlyOverpaymentAmountMode": "auto",
-                "targetAllowanceUtilizationPct": 100,
-            }
-        )
-    )
-    half = calculate_mortgage(
-        base_inputs(
-            {
-                "fixedTermMonths": 24,
-                "currentRent": 5000,
-                "monthlySavings": 0,
-                "monthlyOverpaymentAmountMode": "auto",
-                "targetAllowanceUtilizationPct": 50,
-            }
-        )
-    )
-    # A £5,000/month pool comfortably exceeds the equal-monthly-installment pace
-    # implied by even the full 10% annual allowance, so the installment (not the
-    # pool) binds every month — compare 12-month totals since a single month's
-    # installment is a near-constant fraction of the annual target either way.
-    def sum_overpaid(r):
-        return sum(e.overpaymentPaid for e in r.schedule[:12])
-
-    assert sum_overpaid(half) < sum_overpaid(full)
-    assert half.schedule[11].savingsPotBalance > full.schedule[11].savingsPotBalance
-    # Never triggers an ERC regardless of the target.
-    assert full.totalErcPaid == 0
-    assert half.totalErcPaid == 0
-
-
-def test_auto_mode_paces_evenly_within_each_allowance_year_even_once_permanently_past_the_fixed_term_no_erc_risk():
-    # Regression: allowanceUsedThisYear (which the 'auto' pacing formula relied on
-    # to know how much of the year's target was already used) is only updated
-    # when allowanceApplies is true — i.e. only while ERC risk actually exists.
-    # Once permanently on the variable rate with the default
-    # ercAppliesDuringFixedTermOnly: true, allowanceApplies is false forever, so
-    # that variable never moved again: the pacing formula kept thinking none of
-    # the target had been used, and divided an undiminished target by a shrinking
-    # "months remaining in year" count, ramping the monthly installment up every
-    # month before clipping flat against available cash near the end of each
-    # year — a visible, wrong-looking sawtooth in the schedule's Overpayment
-    # column, caught by inspecting the live app's amortization table.
+def test_auto_min_savings_paces_evenly_within_each_allowance_year_even_once_permanently_past_the_fixed_term_when_erc_still_applies():
+    # Regression: allowanceUsedThisYear (which the paced formula relies on to
+    # know how much of the year's target was already used) is only updated
+    # when allowanceApplies is true. With ercAppliesDuringFixedTermOnly: False,
+    # allowanceApplies stays true for the whole term (ERC risk never goes
+    # away), so the paced branch keeps running past the fixed term too — this
+    # is the scenario the original sawtooth bug needs to still be guarded in.
+    # (With the default ercAppliesDuringFixedTermOnly: True instead, allowance_
+    # applies goes false here and the *unlimited*-overpayment branch takes
+    # over entirely — see the dedicated test below for that behavior.)
     result = calculate_mortgage(
         base_inputs(
             {
                 "fixedTermMonths": 24,
                 "currentRent": 3000,
                 "monthlySavings": 0,
-                "monthlyOverpaymentAmountMode": "auto",
-                "targetAllowanceUtilizationPct": 50,
+                "monthlyOverpaymentAmountMode": "autoMinSavings",
+                "minMonthlySavingsReserve": 0,
+                "bankedSavingsDestination": "keepAsSavings",
+                "config": {"ercAppliesDuringFixedTermOnly": False},
             }
         )
     )
@@ -591,25 +549,25 @@ def test_auto_mode_paces_evenly_within_each_allowance_year_even_once_permanently
     # Months 25-36 (index 24-35): one full allowance year, entirely in the
     # permanently-variable period. Should stay flat, not ramp.
     first_month_of_year = recurring(24)
+    assert first_month_of_year > 0
     for i in range(25, 36):
         assert recurring(i) == pytest.approx(first_month_of_year, abs=0.05)
 
 
-def test_auto_mode_stops_the_monthly_drip_once_past_the_fixed_term_when_banked_savings_destination_is_lump_sum_each_cycle_no_erc_risk_periodic_payout_handles_it_instead():
-    # Contrast with the 'keepAsSavings' case above: once ERC risk is gone AND a
-    # periodic lump-sum payout is already going to sweep the banked pot onto the
-    # mortgage, pacing a parallel monthly drip serves no purpose — it only
-    # recategorizes money from "lump sum" to "recurring overpayment" in the
-    # schedule, one month earlier than the payout would anyway. It should bank
-    # entirely and show up as a lump sum instead.
+def test_auto_min_savings_overpays_the_rest_of_the_pool_directly_once_past_the_fixed_term_no_erc_risk_reserving_only_the_minimum():
+    # The feature under test: once there's no ERC/allowance limit in play
+    # (past the fixed term, with the default ercAppliesDuringFixedTermOnly:
+    # True), 'autoMinSavings' no longer banks everything and waits for the
+    # next periodic lump-sum payout — it reserves the configured minimum and
+    # overpays the rest of the pool every month, immediately.
     result = calculate_mortgage(
         base_inputs(
             {
                 "fixedTermMonths": 24,
                 "currentRent": 3000,
                 "monthlySavings": 0,
-                "monthlyOverpaymentAmountMode": "auto",
-                "targetAllowanceUtilizationPct": 50,
+                "monthlyOverpaymentAmountMode": "autoMinSavings",
+                "minMonthlySavingsReserve": 500,
                 "bankedSavingsDestination": "lumpSumEachCycle",
                 "savingsPayoutIntervalMonths": 12,
             }
@@ -620,22 +578,56 @@ def test_auto_mode_stops_the_monthly_drip_once_past_the_fixed_term_when_banked_s
         return result.schedule[i].overpaymentPaid - result.schedule[i].lumpSumPaid
 
     # Months 25-36 (index 24-35): one full allowance year, entirely past the
-    # fixed term. No recurring drip at all — everything banks toward the payout.
+    # fixed term. A real recurring drip every month now, not zero.
     for i in range(24, 36):
-        assert recurring(i) == pytest.approx(0, abs=0.05)
-    # The payout itself still lands and clears real money onto the mortgage.
+        assert recurring(i) > 0
+    # Only the reserve banks each month, so savingsAddedThisMonth should match
+    # the £500 reserve (the pool comfortably exceeds it here).
+    assert result.schedule[24].savingsAddedThisMonth == pytest.approx(500, abs=0.05)
+    # The periodic payout still lands too, sweeping whatever the reserve
+    # banked across the interval.
     assert any(e.lumpSumPaid > 0 for e in result.schedule)
 
 
-def test_auto_min_savings_reserves_the_minimum_before_pacing_and_overpays_less_than_plain_auto():
-    plain_auto = calculate_mortgage(
+def test_auto_min_savings_overpays_the_rest_of_the_pool_directly_with_keep_as_savings_too_not_just_lump_sum_each_cycle():
+    # The unlimited-overpayment behavior above doesn't depend on
+    # bankedSavingsDestination — once allowance_applies is False there's no
+    # allowance left to pace against or protect a payout for, regardless of
+    # what happens to money that isn't overpaid. 'keepAsSavings' never had a
+    # periodic sweep to begin with, so this is the same reserve-then-overpay
+    # rule as the lumpSumEachCycle test above, just with nothing left to sweep.
+    result = calculate_mortgage(
         base_inputs(
             {
                 "fixedTermMonths": 24,
                 "currentRent": 3000,
                 "monthlySavings": 0,
-                "monthlyOverpaymentAmountMode": "auto",
-                "targetAllowanceUtilizationPct": 100,
+                "monthlyOverpaymentAmountMode": "autoMinSavings",
+                "minMonthlySavingsReserve": 500,
+                "bankedSavingsDestination": "keepAsSavings",
+            }
+        )
+    )
+
+    def recurring(i):
+        return result.schedule[i].overpaymentPaid - result.schedule[i].lumpSumPaid
+
+    for i in range(24, 36):
+        assert recurring(i) > 0
+    assert result.schedule[24].savingsAddedThisMonth == pytest.approx(500, abs=0.05)
+    # No payout mechanism at all for this destination.
+    assert all(e.lumpSumPaid == 0 for e in result.schedule)
+
+
+def test_auto_min_savings_reserves_the_minimum_before_pacing_and_overpays_less_with_a_reserve_than_without():
+    no_reserve = calculate_mortgage(
+        base_inputs(
+            {
+                "fixedTermMonths": 24,
+                "currentRent": 3000,
+                "monthlySavings": 0,
+                "monthlyOverpaymentAmountMode": "autoMinSavings",
+                "minMonthlySavingsReserve": 0,
             }
         )
     )
@@ -646,15 +638,14 @@ def test_auto_min_savings_reserves_the_minimum_before_pacing_and_overpays_less_t
                 "currentRent": 3000,
                 "monthlySavings": 0,
                 "monthlyOverpaymentAmountMode": "autoMinSavings",
-                "targetAllowanceUtilizationPct": 100,
                 "minMonthlySavingsReserve": 500,
             }
         )
     )
     # Same pacing formula, but run against a pool that's £500 smaller every
-    # month, so it never out-overpays plain 'auto' and always banks at least
-    # the reserve.
-    assert with_reserve.schedule[0].overpaymentPaid <= plain_auto.schedule[0].overpaymentPaid
+    # month, so it never out-overpays the zero-reserve run and always banks
+    # at least the reserve.
+    assert with_reserve.schedule[0].overpaymentPaid <= no_reserve.schedule[0].overpaymentPaid
     assert with_reserve.schedule[0].savingsPotBalance >= 500 - 0.05
 
 
@@ -670,78 +661,12 @@ def test_auto_min_savings_overpays_zero_when_the_reserve_alone_exceeds_the_pool(
                 "currentRent": 3000,
                 "monthlySavings": 0,
                 "monthlyOverpaymentAmountMode": "autoMinSavings",
-                "targetAllowanceUtilizationPct": 100,
                 "minMonthlySavingsReserve": 3500,
             }
         )
     )
     assert result.schedule[0].overpaymentPaid == 0
     assert result.schedule[0].savingsPotBalance > 0
-
-
-def test_auto_min_savings_with_zero_reserve_behaves_identically_to_plain_auto_at_100_pct_target():
-    # 'autoMinSavings' always paces at 100% of the allowance regardless of
-    # targetAllowanceUtilizationPct — once a minimum's protected, there's no
-    # reason to hold back further — so with a zero reserve it should match
-    # plain 'auto' *at 100%*, not at whatever targetAllowanceUtilizationPct
-    # happens to be set to.
-    plain_auto_full = calculate_mortgage(
-        base_inputs(
-            {
-                "fixedTermMonths": 24,
-                "currentRent": 3000,
-                "monthlySavings": 0,
-                "monthlyOverpaymentAmountMode": "auto",
-                "targetAllowanceUtilizationPct": 100,
-            }
-        )
-    )
-    zero_reserve = calculate_mortgage(
-        base_inputs(
-            {
-                "fixedTermMonths": 24,
-                "currentRent": 3000,
-                "monthlySavings": 0,
-                "monthlyOverpaymentAmountMode": "autoMinSavings",
-                "targetAllowanceUtilizationPct": 50,
-                "minMonthlySavingsReserve": 0,
-            }
-        )
-    )
-    assert plain_auto_full.totalOverpaid == pytest.approx(zero_reserve.totalOverpaid, abs=0.01)
-    assert plain_auto_full.payoffMonth == zero_reserve.payoffMonth
-
-
-def test_auto_min_savings_ignores_target_allowance_utilization_pct():
-    # Directly proves the override: two autoMinSavings runs that differ only
-    # in targetAllowanceUtilizationPct produce identical schedules, since
-    # that field has no effect on this mode.
-    low_target = calculate_mortgage(
-        base_inputs(
-            {
-                "fixedTermMonths": 24,
-                "currentRent": 3000,
-                "monthlySavings": 0,
-                "monthlyOverpaymentAmountMode": "autoMinSavings",
-                "targetAllowanceUtilizationPct": 10,
-                "minMonthlySavingsReserve": 500,
-            }
-        )
-    )
-    high_target = calculate_mortgage(
-        base_inputs(
-            {
-                "fixedTermMonths": 24,
-                "currentRent": 3000,
-                "monthlySavings": 0,
-                "monthlyOverpaymentAmountMode": "autoMinSavings",
-                "targetAllowanceUtilizationPct": 90,
-                "minMonthlySavingsReserve": 500,
-            }
-        )
-    )
-    assert low_target.totalOverpaid == pytest.approx(high_target.totalOverpaid, abs=0.01)
-    assert low_target.payoffMonth == high_target.payoffMonth
 
 
 def test_effective_savings_grows_as_the_payment_falls_under_reduce_payment_mode():
@@ -752,7 +677,8 @@ def test_effective_savings_grows_as_the_payment_falls_under_reduce_payment_mode(
                 "overpaymentMode": "reducePayment",
                 "currentRent": 1500,
                 "monthlySavings": 0,
-                "monthlyOverpaymentAmountMode": "auto",
+                "monthlyOverpaymentAmountMode": "autoMinSavings",
+                "minMonthlySavingsReserve": 0,
             }
         )
     )
@@ -768,7 +694,7 @@ def test_does_not_divide_by_zero_when_fixed_term_months_is_0_no_fixed_period_at_
                 "fixedTermMonths": 0,
                 "currentRent": 2000,
                 "monthlySavings": 0,
-                "monthlyOverpaymentAmountMode": "auto",
+                "monthlyOverpaymentAmountMode": "autoMinSavings",
             }
         )
     )
@@ -781,7 +707,7 @@ def test_compare_with_and_without_overpayments_ignores_the_savings_pool_entirely
                 "fixedTermMonths": 24,
                 "currentRent": 5000,
                 "monthlySavings": 0,
-                "monthlyOverpaymentAmountMode": "auto",
+                "monthlyOverpaymentAmountMode": "autoMinSavings",
                 "bankedSavingsDestination": "lumpSumEachCycle",
             }
         )
@@ -948,10 +874,15 @@ def test_hybrid_lookahead_inherits_the_real_mid_year_allowance_state_instead_of_
     # the commit decision in either direction (optimistic when real usage
     # this year was already high, pessimistic when the allowance basis is
     # 'outstanding' and the limit itself has since drifted). Directly proves
-    # the carried-in state is what actually drives the 'auto' pacing: with
-    # this year's allowance already almost fully used (auto_target_used_this_year
-    # close to the target), a modest pool can't finish pacing fast enough to
-    # clear within the window; with nothing used yet, it can.
+    # the carried-in state is what actually drives the paced 'autoMinSavings'
+    # branch: with this year's allowance already almost fully used
+    # (auto_target_used_this_year close to the target), a modest pool can't
+    # finish pacing fast enough to clear within the window; with nothing used
+    # yet, it can. ercAppliesDuringFixedTermOnly is False here specifically so
+    # the paced branch stays active throughout this variable-rate lookahead —
+    # with the (more common) True default, allowance_applies would be False
+    # the whole window and the unlimited-overpayment branch would take over
+    # instead, making this particular regression untestable through this path.
     from app.engine.mortgage import _would_clear_within_window_on_variable
     from app.engine.types import MortgageConfig
 
@@ -959,7 +890,7 @@ def test_hybrid_lookahead_inherits_the_real_mid_year_allowance_state_instead_of_
         annualOverpaymentAllowancePct=10,
         allowanceBasis="outstanding",
         ercRateOnExcessPct=3,
-        ercAppliesDuringFixedTermOnly=True,
+        ercAppliesDuringFixedTermOnly=False,
         arrangementFee=0,
         arrangementFeeAddedToLoan=False,
     )
@@ -973,9 +904,8 @@ def test_hybrid_lookahead_inherits_the_real_mid_year_allowance_state_instead_of_
         variable_monthly_rate=7.25 / 100 / 12,
         config=config,
         overpayment_mode="reduceTerm",
-        overpayment_amount_mode="auto",
+        overpayment_amount_mode="autoMinSavings",
         fixed_monthly_overpayment_pence=0,
-        target_utilization_pct=100,
         min_monthly_savings_reserve_pence=0,
         monthly_budget_pool_pence=180_000,  # £1,800/month pool, well above the tiny base payment
         banked_destination="keepAsSavings",
@@ -1067,7 +997,8 @@ def payout_inputs(overrides: dict | None = None) -> MortgageInputs:
         "variableRateAnnualPct": 7.25,
         "currentRent": 5000,
         "monthlySavings": 0,
-        "monthlyOverpaymentAmountMode": "auto",
+        "monthlyOverpaymentAmountMode": "autoMinSavings",
+        "minMonthlySavingsReserve": 500,
         "bankedSavingsDestination": "lumpSumEachCycle",
         "rateAfterFixedTermMode": "stayOnVariable",
     }
@@ -1165,7 +1096,7 @@ def test_conserves_every_pound_of_banked_savings_when_a_payout_overshoots_the_pa
     # used to clip it to the balance and silently drop the overshoot. With a
     # huge pool against a tiny loan, that dropped hundreds of thousands of
     # pounds of the borrower's own banked savings out of the reported total.
-    # In 'auto' mode with no manual lump sums, no pocket money is injected, so
+    # In 'autoMinSavings' mode with no manual lump sums, no pocket money is injected, so
     # every pound of freed-up pool money must land either on the mortgage
     # (totalOverpaid) or in the unallocated savings pot — nothing may vanish.
     inputs = payout_inputs(
@@ -1260,8 +1191,8 @@ def test_calculate_fills_in_defaults_when_only_property_value_is_given():
     # resolve_mortgage_inputs().
     assert result.principal == 250_000 - DERIVED_DEPOSIT_250K
     # Every other field defaults too, including the rent+savings pool and
-    # 'auto' overpayment mode — real overpayments pay this off well before
-    # the default 300-month term.
+    # 'autoMinSavings' overpayment mode — real overpayments pay this off well
+    # before the default 300-month term.
     assert len(result.schedule) == 61
 
 
@@ -1321,11 +1252,27 @@ def test_auto_overpayments_resume_immediately_at_the_new_fixed_deal_not_11_month
     # pacing budget too. The fix anchors the reset to the new fixed deal's
     # own start (month 63) instead, so pacing resumes the same month deal 2
     # begins.
-    result = calculate_mortgage(MortgageInputs(includeSchedule=True, propertyValue=250_000, deposit=50_000))
+    #
+    # currentRent/monthlySavings/serviceCharge are overridden away from the
+    # shipped defaults here (rather than using them verbatim): the shipped
+    # pool is now aggressive enough, under autoMinSavings's new unlimited-
+    # overpayment-during-the-gap behavior, to pay the loan off before month
+    # 63 is ever reached — this override keeps a pool big enough to still
+    # exercise deal 2's pacing without racing the payoff.
+    result = calculate_mortgage(
+        MortgageInputs(
+            includeSchedule=True,
+            propertyValue=250_000,
+            deposit=50_000,
+            currentRent=2000,
+            monthlySavings=0,
+            serviceCharge=0,
+        )
+    )
     assert result.schedule[62].month == 63
-    # Deal 2 starts month 63 — 'auto' must be nonzero right away, and stay
-    # nonzero through the full window `main` silenced (62-72), not just its
-    # first month.
+    # Deal 2 starts month 63 — 'autoMinSavings' must be nonzero right away, and
+    # stay nonzero through the full window `main` silenced (62-72), not just
+    # its first month.
     assert all(e.overpaymentPaid > 0 for e in result.schedule[62:72])
 
 
@@ -1467,8 +1414,12 @@ def test_stay_on_variable_and_non_cycling_schedules_are_bit_for_bit_unchanged():
     # the shipped default), so both ARE affected by the separate
     # same-month-savings-payout ordering fix (a payout month no longer
     # includes that month's own savings contribution — it banks for next
-    # cycle instead). Their golden values were re-pinned post-fix; only
-    # `plain` (no savings pot at all) is truly untouched by that fix.
+    # cycle instead) *and* by autoMinSavings's new unlimited-overpayment-
+    # during-a-no-ERC-risk-month behavior (overpays the pool directly, minus
+    # the reserve, once past the fixed term, instead of banking the whole
+    # pool and waiting for a periodic lump-sum payout). Their golden values
+    # were re-pinned post both changes; only `plain` (no savings pot at all)
+    # is truly untouched by either.
     plain = calculate_mortgage(
         MortgageInputs(
             includeSchedule=True,
@@ -1501,23 +1452,23 @@ def test_stay_on_variable_and_non_cycling_schedules_are_bit_for_bit_unchanged():
             currentRent=2300,
             monthlySavings=2000,
             serviceCharge=500,
-            monthlyOverpaymentAmountMode="auto",
-            targetAllowanceUtilizationPct=50,
+            monthlyOverpaymentAmountMode="autoMinSavings",
+            minMonthlySavingsReserve=500,
             bankedSavingsDestination="lumpSumEachCycle",
             rateAfterFixedTermMode="stayOnVariable",
         )
     )
-    assert auto_with_payouts.payoffMonth == 67
-    assert auto_with_payouts.totalInterestPaid == pytest.approx(36_623.17, abs=0.01)
-    assert auto_with_payouts.totalOverpaid == pytest.approx(153_964.80, abs=0.01)
-    assert auto_with_payouts.unallocatedSavingsPot == pytest.approx(17_976.83, abs=0.01)
+    assert auto_with_payouts.payoffMonth == 62
+    assert auto_with_payouts.totalInterestPaid == pytest.approx(33_460.61, abs=0.01)
+    assert auto_with_payouts.totalOverpaid == pytest.approx(162_312.85, abs=0.01)
+    assert auto_with_payouts.unallocatedSavingsPot == pytest.approx(2_139.39, abs=0.01)
 
     seeded_defaults_stay_on_variable = calculate_mortgage(
         MortgageInputs(includeSchedule=True, propertyValue=250_000, deposit=50_000, rateAfterFixedTermMode="stayOnVariable")
     )
-    assert seeded_defaults_stay_on_variable.payoffMonth == 67
-    assert seeded_defaults_stay_on_variable.totalInterestPaid == pytest.approx(37_963.17, abs=0.01)
-    assert seeded_defaults_stay_on_variable.totalOverpaid == pytest.approx(164_206.87, abs=0.01)
+    assert seeded_defaults_stay_on_variable.payoffMonth == 62
+    assert seeded_defaults_stay_on_variable.totalInterestPaid == pytest.approx(32_705.63, abs=0.01)
+    assert seeded_defaults_stay_on_variable.totalOverpaid == pytest.approx(164_599.97, abs=0.01)
 
 
 def test_auto_pacing_stays_flat_within_each_allowance_year_when_the_gap_is_not_a_multiple_of_12():
@@ -1550,8 +1501,8 @@ def test_auto_pacing_stays_flat_within_each_allowance_year_when_the_gap_is_not_a
             serviceCharge=500,
             rateAfterFixedTermMode="hybrid",
             remortgageGapMonths=6,
-            monthlyOverpaymentAmountMode="auto",
-            targetAllowanceUtilizationPct=50,
+            monthlyOverpaymentAmountMode="autoMinSavings",
+            minMonthlySavingsReserve=0,
             bankedSavingsDestination="keepAsSavings",
             config={
                 "annualOverpaymentAllowancePct": 10,
@@ -1601,8 +1552,7 @@ def test_auto_pacing_never_exceeds_the_real_remaining_allowance_when_erc_applies
                     "ercRateOnExcessPct": 3,
                     "ercAppliesDuringFixedTermOnly": False,
                 },
-                "monthlyOverpaymentAmountMode": "auto",
-                "targetAllowanceUtilizationPct": 100,
+                "monthlyOverpaymentAmountMode": "autoMinSavings",
                 "bankedSavingsDestination": "lumpSumEachCycle",
                 "savingsPayoutIntervalMonths": 2,
                 "rateAfterFixedTermMode": "remortgageToNewFixed",
@@ -1648,19 +1598,26 @@ def test_cycling_and_hybrid_lump_sum_each_cycle_golden_values():
     # touches the cycling (remortgageToNewFixed) and hybrid payout paths,
     # which previously had no golden pin at all — an ordering regression
     # there wouldn't have been caught by anything in this suite. Pinned
-    # post-fix; both modes land on identical numbers here because payoff
-    # happens inside the first fixed-deal cycle, before hybrid's boundary
-    # lookahead would ever get a chance to diverge from plain cycling.
+    # post-fix.
+    #
+    # Unlike before, cycling and hybrid no longer land on identical numbers
+    # here: autoMinSavings's new unlimited-overpayment-during-the-gap
+    # behavior lets hybrid's own boundary lookahead (which mirrors that same
+    # behavior — see _would_clear_within_window_on_variable) recognise it can
+    # clear the loan by committing to the variable rate sooner than plain
+    # remortgageToNewFixed ever would, so hybrid genuinely diverges and
+    # finishes faster.
     cycling = calculate_mortgage(payout_inputs({"rateAfterFixedTermMode": "remortgageToNewFixed"}))
     assert cycling.payoffMonth == 51
-    assert cycling.totalInterestPaid == pytest.approx(29_829.90, abs=0.01)
-    assert cycling.totalOverpaid == pytest.approx(184_201.72, abs=0.01)
-    assert cycling.unallocatedSavingsPot == pytest.approx(25_170.10, abs=0.01)
+    assert cycling.totalInterestPaid == pytest.approx(27_522.88, abs=0.01)
+    assert cycling.totalOverpaid == pytest.approx(183_405.99, abs=0.01)
+    assert cycling.unallocatedSavingsPot == pytest.approx(27_477.12, abs=0.01)
     assert cycling.totalErcPaid == 0
 
     hybrid = calculate_mortgage(payout_inputs({"rateAfterFixedTermMode": "hybrid"}))
-    assert hybrid.payoffMonth == 51
-    assert hybrid.totalInterestPaid == pytest.approx(29_829.90, abs=0.01)
-    assert hybrid.totalOverpaid == pytest.approx(184_201.72, abs=0.01)
-    assert hybrid.unallocatedSavingsPot == pytest.approx(25_170.10, abs=0.01)
+    assert hybrid.payoffMonth == 46
+    assert hybrid.totalInterestPaid == pytest.approx(24_850.51, abs=0.01)
+    assert hybrid.totalOverpaid == pytest.approx(171_844.83, abs=0.01)
+    assert hybrid.unallocatedSavingsPot == pytest.approx(5_149.49, abs=0.01)
     assert hybrid.totalErcPaid == 0
+    assert hybrid.payoffMonth < cycling.payoffMonth

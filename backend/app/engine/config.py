@@ -22,6 +22,21 @@ from .validate import validate_defaults
 _DEFAULTS_PATH = Path(__file__).with_name("defaults.json")
 
 
+def coerce_legacy_overpayment_mode(data: dict) -> dict:
+    """The plain 'auto' monthlyOverpaymentAmountMode (paced to a
+    targetAllowanceUtilizationPct % of the allowance) was removed in favor of
+    'autoMinSavings' alone. Any DB row written before that removal — the
+    defaults_config row, or a saved calculation — can still contain the
+    literal 'auto' string; a named Docker volume means that data survives an
+    app upgrade untouched, so it must be migrated on read rather than left to
+    fail Pydantic validation. The stale targetAllowanceUtilizationPct key
+    alongside it is harmless and left as-is (Pydantic ignores unknown extra
+    fields by default)."""
+    if data.get("monthlyOverpaymentAmountMode") == "auto":
+        data = {**data, "monthlyOverpaymentAmountMode": "autoMinSavings"}
+    return data
+
+
 def load_seed_defaults() -> MortgageDefaults:
     return MortgageDefaults(**json.loads(_DEFAULTS_PATH.read_text()))
 
@@ -40,7 +55,7 @@ def load_current_defaults(db: Session) -> MortgageDefaults:
         # Defensive fallback (e.g. a test DB that skipped app startup) —
         # the DB row is still the intended runtime source once it exists.
         return load_seed_defaults()
-    stored = json.loads(row.defaults_json)
+    stored = coerce_legacy_overpayment_mode(json.loads(row.defaults_json))
     # Merge over the seed (one level deep, including `config`) so a row
     # written by an older app version — missing a field added to
     # MortgageDefaults *or* to the nested MortgageConfig since — doesn't 500
@@ -138,8 +153,6 @@ def resolve_mortgage_inputs(
         updates["monthlyOverpaymentAmountMode"] = d.monthlyOverpaymentAmountMode
     if inputs.fixedMonthlyOverpayment is None:
         updates["fixedMonthlyOverpayment"] = d.fixedMonthlyOverpayment
-    if inputs.targetAllowanceUtilizationPct is None:
-        updates["targetAllowanceUtilizationPct"] = d.targetAllowanceUtilizationPct
     if inputs.minMonthlySavingsReserve is None:
         updates["minMonthlySavingsReserve"] = d.minMonthlySavingsReserve
     if inputs.bankedSavingsDestination is None:

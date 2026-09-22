@@ -102,15 +102,6 @@ export function OverpaymentsForm({ form, update, initialMonthlyPayment }: Overpa
           <input
             type="radio"
             name="monthlyOverpaymentAmountMode"
-            checked={form.monthlyOverpaymentAmountMode === 'auto'}
-            onChange={() => update('monthlyOverpaymentAmountMode', 'auto')}
-          />
-          <span>Auto (% of penalty free allowance)</span>
-        </label>
-        <label className="radio-field">
-          <input
-            type="radio"
-            name="monthlyOverpaymentAmountMode"
             checked={form.monthlyOverpaymentAmountMode === 'autoMinSavings'}
             onChange={() => update('monthlyOverpaymentAmountMode', 'autoMinSavings')}
           />
@@ -129,18 +120,6 @@ export function OverpaymentsForm({ form, update, initialMonthlyPayment }: Overpa
         />
       )}
 
-      {form.monthlyOverpaymentAmountMode === 'auto' && (
-        <NumberField
-          label="Use up to this % of my penalty-free allowance"
-          suffix="%"
-          value={form.targetAllowanceUtilizationPct}
-          onChange={(v) => update('targetAllowanceUtilizationPct', v)}
-          step="5"
-          min="0"
-          labelHint="Defaults to 50% of the lender's full allowance (set in Advanced assumptions). Spread evenly across the year's 12 months rather than maxed out early, so you don't stop overpaying partway through. Raise it toward 100% to use more of the allowance, or lower it to deliberately keep more in savings instead of overpaying."
-        />
-      )}
-
       {form.monthlyOverpaymentAmountMode === 'autoMinSavings' && (
         <NumberField
           label="Minimum monthly savings"
@@ -149,7 +128,7 @@ export function OverpaymentsForm({ form, update, initialMonthlyPayment }: Overpa
           onChange={(v) => update('minMonthlySavingsReserve', v)}
           step="50"
           min="0"
-          labelHint="Reserved from your rent + savings pool first, so you always keep at least this much in savings each month — subject to what's actually available. Whatever's left goes toward overpaying, up to 100% of your penalty-free allowance. If the pool that month is smaller than this, it all banks and nothing overpays, rather than dipping below the minimum."
+          labelHint="Reserved from your rent + savings pool first, so you always keep at least this much in savings each month — subject to what's actually available. Whatever's left goes toward overpaying: paced up to 100% of your penalty-free allowance while a fixed deal is running, or applied in full with no pacing during any stretch with no allowance/ERC limit (e.g. the gap between fixed deals, or once permanently on the variable rate). If the pool that month is smaller than this, it all banks and nothing overpays, rather than dipping below the minimum."
         />
       )}
 

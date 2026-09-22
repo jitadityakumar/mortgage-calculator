@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.db.models import SavedCalculation
 from app.db.session import get_db
-from app.engine.config import load_current_defaults, resolve_mortgage_inputs
+from app.engine.config import coerce_legacy_overpayment_mode, load_current_defaults, resolve_mortgage_inputs
 from app.engine.types import MortgageInputs
 
 router = APIRouter(prefix="/api/v1/saved-calculations", tags=["saved-calculations"])
@@ -101,7 +101,7 @@ def get_saved_calculation(calculation_id: int, db: Session = Depends(get_db)) ->
         id=row.id,
         name=row.name,
         createdAt=row.created_at,
-        inputs=MortgageInputs(**json.loads(row.inputs_json)),
+        inputs=MortgageInputs(**coerce_legacy_overpayment_mode(json.loads(row.inputs_json))),
     )
 
 
