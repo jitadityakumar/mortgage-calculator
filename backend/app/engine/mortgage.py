@@ -195,8 +195,10 @@ def _would_clear_within_window_on_variable(
             min_monthly_savings_reserve_pence=min_monthly_savings_reserve_pence,
         )
 
+        # Not added to `savings_pot` until after this month's payout check
+        # below — mirrors calculate_mortgage()'s own ordering fix: a payout
+        # month pays out only savings banked from prior months.
         savings_added = max(0, effective_savings - recurring_overpayment)
-        savings_pot += savings_added
 
         # Immediate payout at the window's first month (i == 0), then every
         # `savings_payout_interval_months` after that — mirrors
@@ -208,6 +210,8 @@ def _would_clear_within_window_on_variable(
             remaining_real_allowance = max(0, allowance_limit_this_year - allowance_used_this_year - recurring_overpayment)
             payout_applied = min(savings_pot, remaining_real_allowance) if allowance_applies else savings_pot
             savings_pot -= payout_applied
+
+        savings_pot += savings_added
 
         overpayment_wanted = recurring_overpayment + payout_applied
         overpayment_applied = min(overpayment_wanted, balance)
@@ -440,8 +444,11 @@ def calculate_mortgage(inputs: MortgageInputs, defaults: Optional[MortgageDefaul
             manual_lump_sum_this_month=manual_lump_sum_this_month,
         )
 
+        # Not added to `savings_pot_pence` until after this month's payout
+        # check below — a payout month pays out only savings banked from
+        # *prior* months; this month's own contribution banks for next
+        # cycle instead of riding along in the same month's lump sum.
         savings_added_this_month_pence = max(0, effective_savings_pence - recurring_overpayment_pence)
-        savings_pot_pence += savings_added_this_month_pence
 
         if hybrid_committed:
             # Once committed, periodic payouts count from the commit
@@ -470,6 +477,8 @@ def calculate_mortgage(inputs: MortgageInputs, defaults: Optional[MortgageDefaul
             )
             payout_applied_pence = min(payout_due, remaining_real_allowance) if allowance_applies else payout_due
             savings_pot_pence -= payout_applied_pence
+
+        savings_pot_pence += savings_added_this_month_pence
 
         lump_sum_component_wanted = manual_lump_sum_this_month + payout_applied_pence
         overpayment_wanted = recurring_overpayment_pence + lump_sum_component_wanted
