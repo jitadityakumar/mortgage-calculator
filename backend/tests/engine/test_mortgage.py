@@ -1461,6 +1461,14 @@ def test_stay_on_variable_and_non_cycling_schedules_are_bit_for_bit_unchanged():
     # is always False when cycling_active is False, so stayOnVariable/plain
     # fixed-then-variable loans must be completely unaffected by this
     # change. Confirmed identical to `main`'s own output before this fix.
+    #
+    # `auto_with_payouts` and `seeded_defaults_stay_on_variable` below are
+    # the exceptions: both are lumpSumEachCycle scenarios (the latter via
+    # the shipped default), so both ARE affected by the separate
+    # same-month-savings-payout ordering fix (a payout month no longer
+    # includes that month's own savings contribution — it banks for next
+    # cycle instead). Their golden values were re-pinned post-fix; only
+    # `plain` (no savings pot at all) is truly untouched by that fix.
     plain = calculate_mortgage(
         MortgageInputs(
             includeSchedule=True,
@@ -1499,17 +1507,17 @@ def test_stay_on_variable_and_non_cycling_schedules_are_bit_for_bit_unchanged():
             rateAfterFixedTermMode="stayOnVariable",
         )
     )
-    assert auto_with_payouts.payoffMonth == 65
-    assert auto_with_payouts.totalInterestPaid == pytest.approx(35_916.63, abs=0.01)
-    assert auto_with_payouts.totalOverpaid == pytest.approx(156_487.72, abs=0.01)
-    assert auto_with_payouts.unallocatedSavingsPot == pytest.approx(11_083.37, abs=0.01)
+    assert auto_with_payouts.payoffMonth == 67
+    assert auto_with_payouts.totalInterestPaid == pytest.approx(36_623.17, abs=0.01)
+    assert auto_with_payouts.totalOverpaid == pytest.approx(153_964.80, abs=0.01)
+    assert auto_with_payouts.unallocatedSavingsPot == pytest.approx(17_976.83, abs=0.01)
 
     seeded_defaults_stay_on_variable = calculate_mortgage(
         MortgageInputs(includeSchedule=True, propertyValue=250_000, deposit=50_000, rateAfterFixedTermMode="stayOnVariable")
     )
     assert seeded_defaults_stay_on_variable.payoffMonth == 67
-    assert seeded_defaults_stay_on_variable.totalInterestPaid == pytest.approx(37_860.41, abs=0.01)
-    assert seeded_defaults_stay_on_variable.totalOverpaid == pytest.approx(164_104.11, abs=0.01)
+    assert seeded_defaults_stay_on_variable.totalInterestPaid == pytest.approx(37_963.17, abs=0.01)
+    assert seeded_defaults_stay_on_variable.totalOverpaid == pytest.approx(164_206.87, abs=0.01)
 
 
 def test_auto_pacing_stays_flat_within_each_allowance_year_when_the_gap_is_not_a_multiple_of_12():
@@ -1605,3 +1613,54 @@ def test_auto_pacing_never_exceeds_the_real_remaining_allowance_when_erc_applies
         )
     )
     assert result.totalErcPaid == 0
+
+
+def test_a_payout_month_excludes_that_same_months_own_savings_contribution():
+    # Regression: a payout month used to add this month's own savings to the
+    # pot *before* paying it out, so the lump sum silently included money the
+    # user hadn't actually banked yet as of that month. The payout should
+    # only ever sweep savings banked from *prior* months; this month's own
+    # contribution banks for next cycle instead.
+    result = calculate_mortgage(
+        payout_inputs({"monthlyOverpaymentAmountMode": "none", "savingsPayoutIntervalMonths": 6})
+    )
+    # No recurring overpayment at all, so every fixed-term month's full
+    # effective savings goes straight into the pot until a payout sweeps it
+    # (the payment — and so effective savings — recasts at month 25 when the
+    # rate switches to variable, so only months 1-24 are constant).
+    monthly_savings = result.schedule[0].savingsAddedThisMonth
+    assert monthly_savings > 0
+    assert all(e.savingsAddedThisMonth == pytest.approx(monthly_savings, abs=0.01) for e in result.schedule[:24])
+
+    # First payout month (25, the month after the fixed term ends at 24)
+    # should equal the 24 prior months' banked savings only — NOT 25 months'
+    # worth, i.e. it must exclude month 25's own contribution.
+    payout_month = result.schedule[24]
+    assert payout_month.lumpSumPaid == pytest.approx(24 * monthly_savings, abs=0.01)
+
+    # Month 25's own contribution is still banked, just deferred to the pot
+    # rather than paid out same-month.
+    assert payout_month.savingsPotBalance == pytest.approx(payout_month.savingsAddedThisMonth, abs=0.01)
+
+
+def test_cycling_and_hybrid_lump_sum_each_cycle_golden_values():
+    # The same-month-savings-payout ordering fix (see the test above) also
+    # touches the cycling (remortgageToNewFixed) and hybrid payout paths,
+    # which previously had no golden pin at all — an ordering regression
+    # there wouldn't have been caught by anything in this suite. Pinned
+    # post-fix; both modes land on identical numbers here because payoff
+    # happens inside the first fixed-deal cycle, before hybrid's boundary
+    # lookahead would ever get a chance to diverge from plain cycling.
+    cycling = calculate_mortgage(payout_inputs({"rateAfterFixedTermMode": "remortgageToNewFixed"}))
+    assert cycling.payoffMonth == 51
+    assert cycling.totalInterestPaid == pytest.approx(29_829.90, abs=0.01)
+    assert cycling.totalOverpaid == pytest.approx(184_201.72, abs=0.01)
+    assert cycling.unallocatedSavingsPot == pytest.approx(25_170.10, abs=0.01)
+    assert cycling.totalErcPaid == 0
+
+    hybrid = calculate_mortgage(payout_inputs({"rateAfterFixedTermMode": "hybrid"}))
+    assert hybrid.payoffMonth == 51
+    assert hybrid.totalInterestPaid == pytest.approx(29_829.90, abs=0.01)
+    assert hybrid.totalOverpaid == pytest.approx(184_201.72, abs=0.01)
+    assert hybrid.unallocatedSavingsPot == pytest.approx(25_170.10, abs=0.01)
+    assert hybrid.totalErcPaid == 0
