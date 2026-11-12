@@ -482,6 +482,35 @@ fieldset {
   background-image: repeating-linear-gradient(to right, var(--text-muted) 0 4px, transparent 4px 7px);
 }
 
+.chart-summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 18px;
+  color: var(--text-h);
+}
+
+details[open] > .chart-summary {
+  margin-bottom: 8px;
+}
+
+.chart-legend-swatch--block {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+.chart-legend-swatch--principal,
+.chart-bar--principal {
+  background: var(--accent);
+  fill: var(--accent);
+}
+
+.chart-legend-swatch--interest,
+.chart-bar--interest {
+  background: #d97706;
+  fill: #d97706;
+}
+
 .balance-chart {
   width: 100%;
   height: auto;

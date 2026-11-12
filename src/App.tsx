@@ -3,6 +3,7 @@ import './App.css';
 import { AdvancedConfig } from './components/AdvancedConfig';
 import { AmortizationTable } from './components/AmortizationTable';
 import { BalanceChart } from './components/BalanceChart';
+import { RepaymentBreakdownChart } from './components/RepaymentBreakdownChart';
 import { CoreInputsForm } from './components/CoreInputsForm';
 import { DebugState } from './components/DebugState';
 import { OverpaymentsForm } from './components/OverpaymentsForm';
@@ -242,6 +243,7 @@ function MortgageCalculator({ defaults }: { defaults: MortgageDefaults }) {
                 withSchedule={comparison.withOverpayments.schedule}
                 withoutSchedule={hasOverpayments ? comparison.withoutOverpayments.schedule : undefined}
               />
+              <RepaymentBreakdownChart schedule={comparison.withoutOverpayments.schedule} />
               <AmortizationTable schedule={comparison.withOverpayments.schedule} />
             </>
           )}
