@@ -17,7 +17,7 @@ function niceCeil(value: number): number {
   if (value <= 0) return 0;
   const magnitude = 10 ** Math.floor(Math.log10(value));
   const normalized = value / magnitude;
-  const step = [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10].find((s) => normalized <= s) ?? 10;
+  const step = [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10].find((s) => normalized <= s + 1e-9) ?? 10;
   return step * magnitude;
 }
 
