@@ -507,8 +507,8 @@ details[open] > .chart-summary {
 
 .chart-legend-swatch--interest,
 .chart-bar--interest {
-  background: #d97706;
-  fill: #d97706;
+  background: var(--chart-interest);
+  fill: var(--chart-interest);
 }
 
 .balance-chart {

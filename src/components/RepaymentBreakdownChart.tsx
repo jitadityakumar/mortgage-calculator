@@ -3,7 +3,7 @@ import type { MonthlyScheduleEntry } from '../api/types';
 import { formatGBP, formatMonthsAsYearsMonths } from '../format';
 
 interface RepaymentBreakdownChartProps {
-  /** Schedule with no overpayments/savings — only the mandatory monthly payments. */
+  /** The actual schedule (with overpayments). Only the scheduled interest + principal is plotted. */
   schedule: MonthlyScheduleEntry[];
 }
 
@@ -17,7 +17,7 @@ function niceCeil(value: number): number {
   if (value <= 0) return 0;
   const magnitude = 10 ** Math.floor(Math.log10(value));
   const normalized = value / magnitude;
-  const step = normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10;
+  const step = [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10].find((s) => normalized <= s) ?? 10;
   return step * magnitude;
 }
 
@@ -68,7 +68,7 @@ export function RepaymentBreakdownChart({ schedule }: RepaymentBreakdownChartPro
           Interest
         </span>
       </div>
-      <p className="field-hint">Mandatory payments only — excludes overpayments and savings.</p>
+      <p className="field-hint">Based on your actual schedule, so it ends at payoff and reflects any payment recasts. Shows the scheduled payment only — overpayments and lump sums are not included.</p>
       <svg
         ref={svgRef}
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
@@ -76,8 +76,8 @@ export function RepaymentBreakdownChart({ schedule }: RepaymentBreakdownChartPro
         role="img"
         aria-label="Monthly mortgage repayment split into interest and principal"
       >
-        {yTicks.map((tick) => (
-          <g key={tick}>
+        {yTicks.map((tick, ti) => (
+          <g key={ti}>
             <line x1={PAD.left} x2={WIDTH - PAD.right} y1={yFor(tick)} y2={yFor(tick)} className="chart-gridline" />
             <text x={PAD.left - 8} y={yFor(tick)} className="chart-axis-label" textAnchor="end" dominantBaseline="middle">
               {formatGBP(tick)}

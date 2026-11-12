@@ -243,7 +243,7 @@ function MortgageCalculator({ defaults }: { defaults: MortgageDefaults }) {
                 withSchedule={comparison.withOverpayments.schedule}
                 withoutSchedule={hasOverpayments ? comparison.withoutOverpayments.schedule : undefined}
               />
-              <RepaymentBreakdownChart schedule={comparison.withoutOverpayments.schedule} />
+              <RepaymentBreakdownChart schedule={comparison.withOverpayments.schedule} />
               <AmortizationTable schedule={comparison.withOverpayments.schedule} />
             </>
           )}
